@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../components.css">
+
+</head>
+<body>
+<header>
+    <h3>BookingOrchard</h3>
+</header>
+
+<div class="main">
+    <section>
+<script type="module">
+import { login } from '../utils/auth.js';
+
+document.getElementById('login-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const success = await login(email, password);
+
+  if (success) {
+    console.log("✅ Login successful");
+    document.getElementById('message').textContent = "Logged in successfully!";
+  } else {
+    console.log("❌ Login failed");
+    document.getElementById('message').textContent = "Invalid email or password.";
+  }
+});
+</script>
+        <form id="login-form">
+            <input type="email" id="email" autocomplete="email">
+            <input type="password" id="password" autocomplete="current-password">
+            <input type="submit" value="Login">
+        </form>
+        <p id="message"></p>
+
+    </section>
+</div>
+
+
+
+</body>
+</html>

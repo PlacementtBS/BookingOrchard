@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Users</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+
+<body>
+<header>
+    <h3>BookingOrchard</h3>
+</header>
+
+<nav>
+  <a href="../userManagement">Users</a>
+</nav>
+
+<div class="main">
+<section style="height: calc(100% - 60px);">
+  <div style="height: 100%;">
+    <section>
+      <h3>Users</h3> 
+      <button class="primaryButton">Add User</button>
+    </section>
+    <section>
+      <table>
+        <thead>
+          <tr>
+            <th>Forename</th>
+            <th>Surname</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-table">
+          <!-- populated by JS -->
+        </tbody>
+      </table>
+    </section>
+  </div>
+</section>
+</div>
+
+<script type="module">
+import { select } from '../utils/db.js';
+import { checkSession } from '../utils/auth.js';
+
+(async () => {
+  const user = await checkSession();
+  console.log("Logged in as:", user);
+
+  const users = await select("users", "*", {
+    column: "organisationId",
+    operator: "eq",
+    value: user.organisationId
+  });
+
+  const tableBody = document.getElementById("users-table");
+  tableBody.innerHTML = ""; // clear
+
+  users.forEach(u => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${u.forename}</td>
+      <td>${u.surname}</td>
+      <td>${u.email}</td>
+      <td><button class="primaryButton">Edit</button></td>
+    `;
+    tableBody.appendChild(row);
+  });
+})();
+</script>
+</body>
+</html>

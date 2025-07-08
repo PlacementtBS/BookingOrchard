@@ -1,0 +1,39 @@
+@import url(styles.css);
+.chip{
+    border-radius: 100px;
+    border: solid 1px var(--Secondary);
+    color: var(--Secondary);
+    width: fit-content;
+    padding:2px;
+    padding-left: 5px;
+    padding-right:5px;
+}
+Button{
+    width: fit-content;
+    padding:8px;
+    border:none;
+    border-radius: 3px;
+}
+.grayButton{
+    background-color: var(--ListAndFooter);
+    color:var(--White);
+}
+.primaryButton{
+    background-color: var(--Secondary);
+    color:var(--White);
+}
+.outlineButton{
+    background:none;
+    color:var(--Secondary);
+    border: solid 1px var(--Secondary);
+}
+section div{
+    background-color: var(--White);
+    box-shadow:0 0 10px 5px var(--Shadow); 
+    padding:10px;
+    border-radius: 5px;
+    width:calc(100% - 10px);
+}
+section .third{
+    width:33%;
+}

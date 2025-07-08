@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BookingOrchard</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<header>
+    <h3>BookingOrchard</h3>
+</header>
+<nav>
+  <a href="../userManagement">Users</a>
+</nav>
+<div class="main">
+    <section>
+        Landing Page
+    </section>
+</div>
+
+<script type="module">
+  import { checkSession } from '../utils/auth.js';
+
+  (async () => {
+    const user = await checkSession();
+    console.log("Logged in as:", user);
+    // you can now populate the page with `user`
+  })();
+</script>
+</body>
+</html>
