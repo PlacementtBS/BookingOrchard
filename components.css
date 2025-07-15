@@ -27,6 +27,15 @@ button{
     color:var(--Secondary);
     border: solid 1px var(--Secondary);
 }
+header .outlineButton{
+    background:none;
+    color:var(--White);
+    border: solid 1px var(--White);
+}
+header .primaryButton{
+    background-color:var(--White);
+    color: var(--Primary);
+}
 section div{
     background-color: var(--White);
     box-shadow:0 0 10px 5px var(--Shadow); 

@@ -8,11 +8,14 @@
 </head>
 <body>
 <header>
-    <h3>One</h3>
-    <button id="logout-btn">Logout</button>
+    <a href="../">
+        <img src="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Fill%20White.svg">
+        <h3>BookingOrchard</h3>
+    </a>
+    <button id="logout-btn" class="primaryButton">Logout</button>
 </header>
-<nav>
-</nav>
+<nav></nav>
+
 <div class="main">
     <section>
       <div>
@@ -81,10 +84,9 @@
 </div>
 
 <script type="module">
-import { checkSession } from '../utils/auth.js';
+import { checkSession, logout } from '../utils/auth.js';
 import createOrganisation from '../utils/organisations.js';
 import { select, remove, insert } from '../utils/db.js';
-import { logout } from '../utils/auth.js';
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   logout();
