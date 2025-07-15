@@ -1,5 +1,5 @@
 import { hashPassword } from "./hash.js";
-import { insert, select } from "./db.js";
+import { insert,remove , select } from "./db.js";
 
 export function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
@@ -109,5 +109,39 @@ export async function checkSession() {
   function redirect() {
     window.location.href = '../login';
     return null;
+  }
+}
+export async function logout() {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) {
+    window.location.href = '../login';
+    return;
+  }
+
+  try {
+    // get session from DB
+    const [session] = await select('sessions', '*', {
+      column: 'token',
+      operator: 'eq',
+      value: token
+    }) || [];
+
+    if (session) {
+      // remove from DB
+      await remove('sessions', {
+        column: 'token',
+        operator: 'eq',
+        value: token
+      });
+    }
+
+    // remove from localStorage
+    localStorage.removeItem('sessionToken');
+
+    console.log("✅ User logged out.");
+  } catch (err) {
+    console.error("Error during logout:", err);
+  } finally {
+    window.location.href = '../login';
   }
 }
