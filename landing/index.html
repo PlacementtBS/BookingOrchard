@@ -9,6 +9,7 @@
 <body>
 <header>
     <h3>BookingOrchard</h3>
+    <button id="logout-btn">Logout</button>
 </header>
 
 <nav>
@@ -23,6 +24,11 @@
 
 <script type="module">
 import { checkSession } from '../utils/auth.js';
+import { logout } from '../utils/auth.js';
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  logout();
+});
 
 (async () => {
   const user = await checkSession();
