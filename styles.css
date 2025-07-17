@@ -129,3 +129,8 @@ form label{
 form input{
     height:25px;
 }
+header div{
+    display: flex;
+    gap: 20px;
+    width: 80%;
+}
