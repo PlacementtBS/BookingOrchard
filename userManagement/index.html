@@ -1,81 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Users</title>
-<link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="../components.css">
+<link rel="stylesheet" href="../styles.css" />
+<link rel="stylesheet" href="../components.css" />
+<link rel="icon" type="image/svg+xml" href="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Fill%20Green.svg">
+
+<script src="../utils/nav.js" type="module"></script>
+<style>
+  /* Simple modal styles for Edit User modal (keep existing) */
+  .modal {
+    display: none;
+    position: fixed; top: 0; left: 0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5);
+  }
+  .modal.active {
+    display: flex;
+  }
+  .modal-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 6px;
+    width: 320px;
+    max-width: 90vw;
+  }
+  .modal-content label {
+    display: block;
+    margin-top: 0.8rem;
+  }
+  .modal-content input {
+    width: 100%;
+    padding: 0.4rem;
+    margin-top: 0.2rem;
+  }
+  .modal-buttons {
+    margin-top: 1rem;
+    text-align: right;
+  }
+  .modal-buttons button {
+    margin-left: 0.5rem;
+  }
+
+  /* Popup styles like your example */
+  .popup {
+    display: none;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5);
+    justify-content: right;
+    align-items: ;
+    z-index: 9999;
+  }
+  .popup.active {
+    display: flex;
+  }
+  .popup form {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 6px;
+    width: 320px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+  }
+  .popup form h3 {
+    margin-top: 0;
+  }
+  .popup form input {
+    margin: 0.4rem 0 1rem 0;
+    padding: 0.4rem;
+    font-size: 1rem;
+  }
+  .popup .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+</style>
 </head>
 
 <body>
-<header>
-    <a href="../"><img src="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Fill%20White.svg"><h3>BookingOrchard</h3></a>
-    <button id="logout-btn" class="primaryButton">Logout</button>
-</header>
 
-<nav>
-  <a href="../userManagement">Users</a>
-</nav>
+
 
 <div class="main">
-<section style="height: calc(100% - 60px);">
-  <div style="height: 100%;">
-    <section>
-      <h3>Users</h3> 
-      <button class="primaryButton">Add User</button>
-    </section>
-    <section>
-      <table>
-        <thead>
-          <tr>
-            <th>Forename</th>
-            <th>Surname</th>
-            <th>Email</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="users-table">
-          <!-- populated by JS -->
-        </tbody>
-      </table>
-    </section>
+  <section style="height: calc(100% - 60px);">
+    <div style="height: 100%;">
+      <section>
+        <h3>Users</h3>
+        <button id="add-user-btn" class="primaryButton">Add User</button>
+      </section>
+      <section>
+        <table>
+          <thead>
+            <tr>
+              <th>Forename</th>
+              <th>Surname</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody id="users-table">
+            <!-- populated by JS -->
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </section>
+</div>
+
+<!-- Add/Edit User Modal (Edit only) -->
+<div id="user-modal" class="modal">
+  <div class="modal-content">
+    <h4 id="modal-title">Edit User</h4>
+    <form id="user-form">
+      <input type="hidden" id="user-id" />
+      <label for="forename">Forename</label>
+      <input type="text" id="forename" name="forename" required />
+
+      <label for="surname">Surname</label>
+      <input type="text" id="surname" name="surname" required />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="password">Password <small>(only to change)</small></label>
+      <input type="password" id="password" name="password" />
+
+      <div class="modal-buttons">
+        <button type="button" id="cancel-btn" class="outlineButton">Cancel</button>
+        <button type="submit" class="primaryButton">Save</button>
+      </div>
+    </form>
   </div>
-</section>
+</div>
+
+<!-- Add User Popup (new popup style) -->
+<div id="popup-add-user" class="popup">
+  <form id="form-add-user" onsubmit="return false;">
+    <h3>Add User</h3>
+    <input type="text" id="add-forename" placeholder="Forename" autocomplete="off" required />
+    <input type="text" id="add-surname" placeholder="Surname" autocomplete="off" required />
+    <input type="email" id="add-email" placeholder="Email" autocomplete="off" required />
+    <input type="password" id="add-password" placeholder="Password" autocomplete="off" required />
+    <div class="buttons">
+      <button type="button" class="primaryButton" id="btn-save-add-user">Save</button>
+      <button type="button" id="btn-cancel-add-user">Cancel</button>
+    </div>
+  </form>
 </div>
 
 <script type="module">
-import { select } from '../utils/db.js';
-import { checkSession } from '../utils/auth.js';
-import { logout } from '../utils/auth.js';
+import { select, insert, remove } from '../utils/db.js';
+import { checkSession, logout } from '../utils/auth.js';
+import { hashPassword } from '../utils/hash.js';
 
-document.getElementById("logout-btn").addEventListener("click", () => {
-  logout();
-});
+const addUserBtn = document.getElementById('add-user-btn');
+const usersTable = document.getElementById('users-table');
 
-(async () => {
-  const user = await checkSession();
-  console.log("Logged in as:", user);
+// Edit modal elements
+const userModal = document.getElementById('user-modal');
+const modalTitle = document.getElementById('modal-title');
+const userForm = document.getElementById('user-form');
+const userIdInput = document.getElementById('user-id');
+const forenameInput = document.getElementById('forename');
+const surnameInput = document.getElementById('surname');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const cancelBtn = document.getElementById('cancel-btn');
 
-  const users = await select("users", "*", {
-    column: "organisationId",
-    operator: "eq",
-    value: user.organisationId
+// Add user popup elements
+const popupAddUser = document.getElementById('popup-add-user');
+const formAddUser = document.getElementById('form-add-user');
+const addForename = document.getElementById('add-forename');
+const addSurname = document.getElementById('add-surname');
+const addEmail = document.getElementById('add-email');
+const addPassword = document.getElementById('add-password');
+const btnSaveAddUser = document.getElementById('btn-save-add-user');
+const btnCancelAddUser = document.getElementById('btn-cancel-add-user');
+
+let currentUser = null;
+let organisationId = null;
+
+// Load users from DB
+async function loadUsers() {
+  usersTable.innerHTML = '';
+  currentUser = await checkSession();
+  if (!currentUser) return;
+  organisationId = currentUser.organisationId;
+
+  const users = await select('users', '*', {
+    column: 'organisationId',
+    operator: 'eq',
+    value: organisationId,
   });
 
-  const tableBody = document.getElementById("users-table");
-  tableBody.innerHTML = ""; // clear
-
   users.forEach(u => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td>${u.forename}</td>
       <td>${u.surname}</td>
       <td>${u.email}</td>
-      <td><button class="primaryButton">Edit</button></td>
     `;
-    tableBody.appendChild(row);
+    usersTable.appendChild(tr);
   });
-})();
+}
+
+// Show edit modal
+function showEditModal(user) {
+  userModal.classList.add('active');
+  modalTitle.textContent = 'Edit User';
+  userIdInput.value = user.id || '';
+  forenameInput.value = user.forename || '';
+  surnameInput.value = user.surname || '';
+  emailInput.value = user.email || '';
+  passwordInput.value = '';
+}
+
+// Hide edit modal
+function hideEditModal() {
+  userModal.classList.remove('active');
+  userForm.reset();
+}
+
+// Show add user popup
+function showAddUserPopup() {
+  popupAddUser.classList.add('active');
+  // Clear inputs
+  addForename.value = '';
+  addSurname.value = '';
+  addEmail.value = '';
+  addPassword.value = '';
+}
+
+// Hide add user popup
+function hideAddUserPopup() {
+  popupAddUser.classList.remove('active');
+  formAddUser.reset();
+}
+
+
+// Add user button opens add user popup
+addUserBtn.addEventListener('click', () => {
+  showAddUserPopup();
+});
+
+// Cancel add user popup
+btnCancelAddUser.addEventListener('click', () => {
+  hideAddUserPopup();
+});
+
+// Save add user popup
+btnSaveAddUser.addEventListener('click', async () => {
+  const forename = addForename.value.trim();
+  const surname = addSurname.value.trim();
+  const email = addEmail.value.trim();
+  const password = addPassword.value;
+
+  if (!forename || !surname || !email || !password) {
+    alert('Please fill in all fields');
+    return;
+  }
+
+  try {
+    const pwh = await hashPassword(password);
+    await insert('users', {
+      forename,
+      surname,
+      email,
+      passwordHash: pwh.hash,
+      saltHash: pwh.salt,
+      organisationId,
+      activated: true
+    });
+    alert('User added successfully');
+    hideAddUserPopup();
+    await loadUsers();
+  } catch (e) {
+    alert('Error adding user: ' + e.message);
+  }
+});
+
+// Click Edit buttons in user table
+usersTable.addEventListener('click', (ev) => {
+  if (ev.target.classList.contains('edit-btn')) {
+    const userId = ev.target.getAttribute('data-id');
+    loadUserForEdit(userId);
+  }
+});
+
+// Load user data for editing
+async function loadUserForEdit(id) {
+  try {
+    const users = await select('users', '*', { column: 'id', operator: 'eq', value: id });
+    if (users.length === 1) {
+      showEditModal(users[0]);
+    } else {
+      alert('User not found');
+    }
+  } catch (e) {
+    alert('Error loading user: ' + e.message);
+  }
+}
+
+// Cancel button in edit modal
+cancelBtn.addEventListener('click', () => {
+  hideEditModal();
+});
+
+// Submit edit user form
+userForm.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+
+  const id = userIdInput.value;
+  const forename = forenameInput.value.trim();
+  const surname = surnameInput.value.trim();
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!forename || !surname || !email) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  try {
+    // Load current user record
+    const users = await select('users', '*', { column: 'id', operator: 'eq', value: id });
+    if (users.length !== 1) {
+      alert('User not found');
+      return;
+    }
+    const user = users[0];
+
+    let updatedData = {
+      forename,
+      surname,
+      email,
+    };
+
+    if (password) {
+      // Hash new password
+      const pwh = await hashPassword(password);
+      updatedData.passwordHash = pwh.hash;
+      updatedData.saltHash = pwh.salt;
+    }
+
+    // Remove old record and insert updated record
+    await remove('users', { column: 'id', operator: 'eq', value: id });
+    await insert('users', { ...user, ...updatedData });
+
+    alert('User updated successfully');
+    hideEditModal();
+    await loadUsers();
+  } catch (e) {
+    alert('Error updating user: ' + e.message);
+  }
+});
+
+// Initial load
+loadUsers();
+
 </script>
+
 </body>
 </html>

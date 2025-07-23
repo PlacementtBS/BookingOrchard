@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <link rel="icon" type="image/svg+xml" href="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Fill%20Green.svg">
+
+  <script src="../utils/adminNav.js" type="module"></script>
+</head>
+
+<body>
+  <div class="main">
+    <section>
+      <div>
+        <div id="main"><!-- Table renders here --></div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { checkSession, logout } from '../utils/auth.js';
+    import { select } from '../utils/db.js';
+    import { renderTablePage } from '../utils/interacttable.js';
+
+   document.addEventListener('DOMContentLoaded', async () => {
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => logout());
+  }
+
+  const user = await checkSession();
+  console.log('Logged in as:', user);
+
+  if (user.product !== 'admin') {
+    window.location.href = '../landing';
+    return;
+  }
+
+  const columns = ['name', 'adminForename', 'adminSurname', 'adminEmail'];
+
+  async function loadAndRenderTable() {
+    const organisations = await select('organisations');
+    const adminIds = [...new Set(organisations.map(org => org.admin).filter(Boolean))];
+
+    const allUsers = await select('users');
+    const usersById = Object.fromEntries(
+      allUsers
+        .filter(u => adminIds.includes(u.id))
+        .map(u => [u.id, u])
+    );
+
+    const data = organisations.map(org => {
+      const adminUser = usersById[org.admin] || {};
+      return {
+        id: org.id,
+        values: [
+          org.name ?? '',
+          adminUser.forename ?? '',
+          adminUser.surname ?? '',
+          adminUser.email ?? ''
+        ]
+      };
+    });
+
+    renderTablePage('main', {
+      tableLabel: "Organisations",
+      columns,
+      friendlyNames: ['Organisation', 'Admin First Name', 'Admin Last Name', 'Admin Email'],
+      data,
+      tableName: 'organisations'
+    });
+  }
+
+  await loadAndRenderTable();
+});
+
+  </script>
+</body>
+</html>

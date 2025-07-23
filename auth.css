@@ -1,76 +1,103 @@
-:root{
-    --Primary : #1C824F;
-    --Secondary : #585B84;
-    --PrimaryA : #AEDCC0;
-    --SecondaryA : #CFBAE1;
-    --Background : #F4F4F9;
-    --ListAndFooter : #7D7D7D;
-    --BordersAndLines : #E0E0E0;
+:root {
+    --Primary: #1C824F;
+    --Secondary: #585B84;
+    --PrimaryA: #AEDCC0;
+    --SecondaryA: #CFBAE1;
+    --Background: #F4F4F9;
+    --ListAndFooter: #7D7D7D;
+    --BordersAndLines: #E0E0E0;
     --Shadow: #0000001a;
     --White: #ffffff;
 }
+
 @keyframes gradient {
-	0% {
-		background-position: 0% 50%;
-	}
-	50% {
-		background-position: 100% 50%;
-	}
-	100% {
-		background-position: 0% 50%;
-	}
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 * {
-    margin:0;
-    top:0;
-    left:0;
+    margin: 0;
+    top: 0;
+    left: 0;
     font-family: sans-serif;
 }
+
 body {
-    width:100vw;
+    width: 100vw;
     height: 100vh;
-    background: linear-gradient(-45deg, #28e060, #20eba7 , #915cce);
-	background-size: 400% 400%;
-	animation: gradient 15s ease infinite;
+    background: linear-gradient(-45deg, #28e060, #20eba7, #915cce);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
 }
-.main{
-    position: fixed;
-    padding:10px;
-    width:100vw;
-    height: 100vh;
-    overflow:none;
-    display: flex;
-    align-items: center;
-    
+
+/* Main container */
+/* Modal overlay */
+.main {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.1); /* dark transparent overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: hidden;
 }
-section{
+
+/* Modal content box */
+.main > section > div {
+  background-color: var(--White);
+  padding: 2rem 3rem;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.25);
+  max-width: 400px;
+  width: 90%;
+  box-sizing: border-box;
+}
+
+
+/* Section */
+section {
     margin: auto;
     display: flex;
     flex-direction: row;
-    gap:10px;
+    gap: 10px;
     justify-content: space-between;
     width: 50%;
     height: fit-content;
 }
-section h3{
-    color:var(--Primary);
+
+section h3 {
+    color: var(--Primary);
 }
-table{
+
+/* Table */
+table {
     background-color: var(--White);
     border-radius: 5px;
     width: 100%;
     border-collapse: collapse;
 }
-table tr{
+
+table tr {
     height: 40px;
     border-bottom: solid 1px var(--BordersAndLines);
     justify-content: space-between;
 }
-table tr:hover{
+
+table tr:hover {
     background-color: var(--BordersAndLines);
 }
-table th{
+
+table th {
     text-align: center;
     padding-left: 5px;
     padding-right: 5px;
@@ -80,76 +107,69 @@ table th{
     font-size: 10pt;
     vertical-align: middle;
 }
+
 table td {
     text-align: center;
     padding-left: 5px;
     padding-right: 5px;
     vertical-align: middle;
 }
-form{
-    width: 100%;
-    display: flex;
-    flex-direction: column;
+
+/* Form */
+form {
+   
+width: 100%;
+display: flex;
+flex-direction: column;
 }
-form label{
-    margin-top: 20px;
-    margin-bottom: -10px;
-    margin-left:10px;
-    z-index: 20;
-    background-color: white;
-    width: fit-content;
-    text-transform: uppercase;
-    color: var(--Primary);
-    font-weight: bold;
-    font-size: small;
+
+form label {
+margin-top: 20px;
+margin-bottom: -10px;
+margin-left: 10px;
+z-index: 20;
+background-color: white;
+width: fit-content;
+text-transform: uppercase;
+color: var(--Primary);
+font-weight: bold;
+font-size: small;
 }
-form input{
-    height:25px;
-}@import url(styles.css);
-.chip{
-    border-radius: 100px;
-    border: solid 1px var(--Secondary);
-    color: var(--Secondary);
-    width: fit-content;
-    padding:2px;
-    padding-left: 5px;
-    padding-right:5px;
+
+form input {
+height: 25px;
 }
-button{
-    width: fit-content;
-    padding:8px;
-    border:none;
-    border-radius: 3px;
+
+button {
+cursor: pointer;
+width: fit-content;
+padding: 8px;
+border: none;
+border-radius: 3px;
 }
-.grayButton{
-    background-color: var(--ListAndFooter);
-    color:var(--White);
+
+.grayButton {
+background-color: var(--ListAndFooter);
+color: var(--White);
 }
-.primaryButton{
-    background-color: var(--Secondary);
-    color:var(--White);
+
+.primaryButton {
+background-color: var(--Secondary);
+color: var(--White);
 }
-.outlineButton{
-    background:none;
-    color:var(--Secondary);
-    border: solid 1px var(--Secondary);
+
+.outlineButton {
+background: none;
+color: var(--Secondary);
+border: solid 1px var(--Secondary);
 }
-header .outlineButton{
-    background:none;
-    color:var(--White);
-    border: solid 1px var(--White);
+
+/* Links */
+a {
+color: var(--Primary);
+text-decoration: none;
 }
-header .primaryButton{
-    background-color:var(--White);
-    color: var(--Primary);
-}
-section div{
-    background-color: var(--White);
-    box-shadow:0 0 10px 5px var(--Shadow); 
-    padding:10px;
-    border-radius: 5px;
-    width:calc(100% - 10px);
-}
-section .third{
-    width:33%;
+
+a:hover {
+text-decoration: underline;
 }
