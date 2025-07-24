@@ -62,7 +62,7 @@ export async function login(email, password) {
 
     if (pwh.hash === user.passwordHash) {
       console.log("✅ Login successful");
-      sendEmail(1, user.id);
+      await sendEmail(1, user.id);
       await createSession(user.id);
       window.location.href = "../landing";
       return true;
