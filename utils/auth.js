@@ -1,5 +1,6 @@
 import { hashPassword } from "./hash.js";
 import { insert,remove , select } from "./db.js";
+import { sendEmail } from "./brevo.js";
 
 export function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
@@ -61,6 +62,7 @@ export async function login(email, password) {
 
     if (pwh.hash === user.passwordHash) {
       console.log("✅ Login successful");
+      sendEmail(1, user.id);
       await createSession(user.id);
       window.location.href = "../landing";
       return true;
