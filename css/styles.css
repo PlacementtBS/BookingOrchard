@@ -332,3 +332,33 @@ section .third {
     width: 100%;
     margin-top: auto;
 } 
+.cardContainer{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    background: none;
+    gap: 10px;
+}
+.card{
+    width: 200px;
+    height: 300px;
+    padding: 10px;
+    border-radius: 5px;
+    background: var(--White);
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+}
+.card .image{
+    width:100%;
+    height: 50px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: none;
+}
+.card .primaryButton{
+    width: 100%;
+}
+.card div{
+    padding:0;
+}

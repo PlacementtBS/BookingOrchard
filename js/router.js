@@ -1,7 +1,7 @@
 import renderHome from '../views/home.js';
 import renderLogin, { setupLoginForm } from '../views/login.js';
 import { checkSession, logout } from './auth.js';
-import bookingsPage from '../views/bookings.js';
+import bookingsPage, { loadBookings } from "../views/bookings.js";
 
 let currentUser = null;
 
@@ -14,7 +14,11 @@ const publicRoutes = {
 const privateRoutes = {
   '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
   '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
-  '/bookings': bookingsPage,
+  '/bookings': async () => {
+    const html = bookingsPage(currentUser);
+    setTimeout(() => loadBookings(currentUser), 0); // Load data after render
+    return html;
+  },
 };
 
 const adminRoutes = {
