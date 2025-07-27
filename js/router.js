@@ -15,6 +15,11 @@ const privateRoutes = {
   '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
 };
 
+const adminRoutes = {
+  '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
+  '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
+};
+
 // Switch between public and private styles
 function setStylesheet(type) {
   const link = document.getElementById('main-style');
@@ -65,6 +70,23 @@ function renderPrivateLayout(content) {
     <main class="main">${content}</main>
   `;
 }
+function renderAdminLayout(content) {
+  return `
+    <nav class="private-nav">
+      <a href="#/" class="logo-link">
+        <img src="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Group%205.png" alt="Company logo" />
+      </a>
+      <div class="nav-links">
+        <a href="#/dashboard" class="nav-link">Dashboard</a>
+        <a href="#/tasks" class="nav-link">Tasks</a>
+        <a href="#/notifications" class="nav-link">Notifications</a>
+        <hr />
+      </div>
+      <button id="btn-logout" class="primaryButton">Log out</button>
+    </nav>
+    <main class="main">${content}</main>
+  `;
+}
 
 async function router() {
   const hash = location.hash.slice(1) || '/';
@@ -81,10 +103,15 @@ async function router() {
   // Authenticated + private route
   if (currentUser && privateRoutes[hash]) {
     setStylesheet('private');
-    const view = privateRoutes[hash];
+    if(currentUser.product == "admin"){
+    const view = adminRoutes[hash];
+    const content = typeof view === 'function' ? await view() : view;
+    app.innerHTML = renderAdminLayout(content);
+    }else {
+      const view = privateRoutes[hash];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderPrivateLayout(content);
-
+    }
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
