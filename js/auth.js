@@ -1,5 +1,5 @@
 import { hashPassword } from "./hash.js";
-import { insert,remove , select } from "./db.js";
+import { insert, remove, select } from "./db.js";
 import { sendEmail } from "./brevo.js";
 
 export function hexToBytes(hex) {
@@ -9,12 +9,14 @@ export function hexToBytes(hex) {
   }
   return bytes;
 }
+
 function generateToken() {
   // generates a random hex token
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
 async function createSession(userId) {
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
@@ -25,6 +27,7 @@ async function createSession(userId) {
   });
   localStorage.setItem('sessionToken', token);
 }
+
 export default async function createAccount(forename, surname, email, password, organisationId) {
   const pwh = await hashPassword(password);
 
@@ -64,7 +67,8 @@ export async function login(email, password) {
       console.log("✅ Login successful");
       await sendEmail(1, user.id);
       await createSession(user.id);
-      window.location.href = "../landing";
+      // Use hash navigation, not page reload
+      window.location.hash = '#/dashboard';
       return true;
     } else {
       console.warn("Login failed: password mismatch");
@@ -80,12 +84,12 @@ export async function login(email, password) {
 }
 
 /**
- * Verifies session token and returns live user data, or redirects to login if invalid.
- * @returns {Promise<object>} user data
+ * Verifies session token and returns live user data, or returns null if invalid.
+ * @returns {Promise<object|null>} user data or null
  */
 export async function checkSession() {
   const token = localStorage.getItem('sessionToken');
-  if (!token) return redirect();
+  if (!token) return null;
 
   const [session] = await select('sessions', '*', {
     column: 'token',
@@ -95,7 +99,7 @@ export async function checkSession() {
 
   if (!session || new Date(session.expires_at) < Date.now()) {
     localStorage.removeItem('sessionToken');
-    return redirect();
+    return null;
   }
 
   const [user] = await select('users', '*', {
@@ -104,19 +108,15 @@ export async function checkSession() {
     value: session.user_id
   }) || [];
 
-  if (!user) return redirect();
+  if (!user) return null;
 
   return user;
-
-  function redirect() {
-    window.location.href = '../login';
-    return null;
-  }
 }
+
 export async function logout() {
   const token = localStorage.getItem('sessionToken');
   if (!token) {
-    window.location.href = '../login';
+    window.location.hash = '#/login';
     return;
   }
 
@@ -144,6 +144,7 @@ export async function logout() {
   } catch (err) {
     console.error("Error during logout:", err);
   } finally {
-    window.location.href = '../login';
+    // Use hash navigation, not page reload
+    window.location.hash = '#/login';
   }
 }

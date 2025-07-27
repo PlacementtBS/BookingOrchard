@@ -1,0 +1,144 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #333;
+  background-image: url('https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/public1//Vector.svg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-color: #AEDCC0;
+  background-attachment: fixed;
+}
+.content{
+  padding-top: 100px;
+  display: flex;
+  flex-direction: column;
+  vertical-align: middle;
+  height: calc(100vh - 100px);
+  align-items: center;
+}
+form{
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: fit-content;
+  height: fit-content;
+}
+form h1{
+  margin-top: 0;
+  font-size: 16pt;
+}
+form input{
+  font-size: 12pt;
+  padding:5px;
+}
+
+header {
+  display: flex;
+  position: fixed;
+  height: 50px;
+  width: 100%;
+  background-color: white;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  z-index: 100;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+header .logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #333;
+}
+
+header .logo img {
+  height: 32px;
+  margin-right: 0.5rem;
+}
+
+header .logo h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+header div a {
+  margin: 0 0.75rem;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+}
+
+header div a:hover {
+  text-decoration: underline;
+}
+
+.primaryButton {
+  padding: 0.5rem 1rem;
+  background-color: #47A87B;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primaryButton:hover {
+  background-color: #3d926c;
+}
+
+main {
+  padding: 2rem 1rem;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-top: 2rem;
+}
+
+h3, h4 {
+  margin: 0.25rem 0;
+}
+
+a {
+  color: #2c6e49;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+p {
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  header div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+.hero{
+  width:100%;
+  padding:10px;
+  border-radius: 10px;
+  background: white;
+}

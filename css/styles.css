@@ -1,0 +1,298 @@
+:root {
+    --Primary: #1C824F;
+    --Secondary: #585B84;
+    --PrimaryA: #AEDCC0;
+    --SecondaryA: #CFBAE1;
+    --Background: #F4F4F9;
+    --ListAndFooter: #7D7D7D;
+    --BordersAndLines: #E0E0E0;
+    --Shadow: #0000001a;
+    --White: #ffffff;
+}
+
+@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Reset & Defaults */
+* {
+    margin: 0;
+    top: 0;
+    left: 0;
+    font-family: sans-serif;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--Background);
+    animation: gradient 15s ease infinite;
+}
+
+/* Headings & Text */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+    color: var(--Primary);
+    margin: 10px 0;
+}
+
+p {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.5;
+}
+
+a {
+    color: var(--Primary);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+    padding-left: 20px;
+    color: #333;
+}
+li {
+    margin-bottom: 5px;
+}
+
+/* Form Elements */
+form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+form label {
+    margin: 20px 0 -10px 10px;
+    background-color: white;
+    width: fit-content;
+    text-transform: uppercase;
+    color: var(--Primary);
+    font-weight: bold;
+    font-size: small;
+    z-index: 20;
+}
+form input, textarea, select {
+    padding: 8px;
+    height: 25px;
+    border-radius: 4px;
+    border: 1px solid var(--BordersAndLines);
+    font-size: 1rem;
+    background-color: var(--White);
+    color: #000;
+}
+
+/* Buttons */
+button {
+    cursor: pointer;
+    width: fit-content;
+    padding: 8px;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.grayButton {
+    background-color: var(--ListAndFooter);
+    color: var(--White);
+}
+.primaryButton {
+    background-color: var(--Secondary);
+    color: var(--White);
+}
+.outlineButton {
+    background: none;
+    color: var(--Secondary);
+    border: solid 1px var(--Secondary);
+}
+header .outlineButton {
+    border-color: var(--White);
+    color: var(--White);
+}
+header .primaryButton {
+    background-color: var(--White);
+    color: var(--Primary);
+}
+/* Navigation */
+nav {
+    width: 130px;
+    padding: 10px;
+    position: fixed;
+    flex-direction: column;
+    display: flex;
+    height: 100vh;
+    z-index: 10;
+}
+nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--Primary);
+    padding: 5px;
+    border-radius: 5px;
+}
+nav a.active {
+    background-color: var(--White);
+    font-weight: bold;
+}
+nav .sub {
+    padding-left: 10px;
+}
+nav div {
+    display: flex;
+    flex-direction: column;
+    font-size: small;
+    color: var(--ListAndFooter);
+    margin-top: 50px;
+    gap: 5px;
+    height: 100%;
+}
+nav div a {
+    color: var(--ListAndFooter);
+}
+nav img {
+    width: 130px;
+}
+nav button {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Main container */
+.main {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    margin: 6px 0 0 150px;
+    padding: 10px;
+    width: calc(100vw - 180px);
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+    z-index: 6;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    background-color: var(--White);
+}
+
+/* Sections */
+section {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    border: inset 1px var(--White);
+    gap: 10px;
+}
+section h3 {
+    color: var(--Primary);
+}
+section div {
+    background-color: var(--White);
+    border: solid 1px var(--BordersAndLines);
+    padding: 10px;
+    border-radius: 5px;
+    width: calc(100% - 10px);
+}
+section .third {
+    width: 33%;
+}
+
+/* Table */
+table {
+    background-color: var(--White);
+    border-radius: 5px;
+    width: 100%;
+    border-collapse: collapse;
+}
+table tr {
+    height: 40px;
+    border-bottom: solid 1px var(--BordersAndLines);
+}
+table tr:hover {
+    background-color: var(--BordersAndLines);
+}
+table th, table td {
+    text-align: center;
+    padding: 5px;
+    vertical-align: middle;
+}
+table th {
+    text-transform: uppercase;
+    color: var(--Secondary);
+    font-size: 10pt;
+}
+table select {
+    height: 40px;
+    width: calc(100% + 10px);
+    margin-left: -5px;
+    text-align: center;
+    border: none;
+    background: none;
+}
+table div {
+    display: block;
+}
+
+/* Option Hover */
+option:hover {
+    background-color: var(--BordersAndLines);
+}
+
+/* Modal / Popups */
+.popup, .main {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.popup {
+    justify-content: right;
+}
+.popup form, .main > section > div {
+    background-color: var(--White);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.25);
+    max-width: 400px;
+    width: 90%;
+}
+.popup form {
+    border-bottom-left-radius: 8px;
+    border-top-left-radius: 8px;
+    width: 30vw;
+    gap: 10px;
+}
+.popup form button {
+    width: 100%;
+    margin-top: auto;
+}
+
+/* Chips */
+.chip {
+    border-radius: 100px;
+    border: solid 1px var(--Secondary);
+    color: var(--Secondary);
+    padding: 2px 5px;
+    width: fit-content;
+}
+
+/* Others */
+hr {
+    border: none;
+    border-top: 1px solid var(--BordersAndLines);
+    margin: 20px 0;
+}
