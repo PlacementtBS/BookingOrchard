@@ -1,6 +1,7 @@
 import renderHome from '../views/home.js';
 import renderLogin, { setupLoginForm } from '../views/login.js';
 import { checkSession, logout } from './auth.js';
+import bookingsPage from '../views/bookings.js';
 
 let currentUser = null;
 
@@ -13,6 +14,7 @@ const publicRoutes = {
 const privateRoutes = {
   '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
   '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
+  '/bookings': bookingsPage,
 };
 
 const adminRoutes = {
@@ -63,11 +65,11 @@ function renderPrivateLayout(content) {
         <a href="#/userManagement" class="nav-link sub">Users</a>
         <a href="#/venueManagement" class="nav-link sub">Venue</a>
         <h4>Bookings</h4>
-        <a href="#/bookingManagement" class="nav-link">Bookings</a>
+        <a href="#/bookings" class="nav-link">Overview</a>
       </div>
       <button id="btn-logout" class="primaryButton">Log out</button>
     </nav>
-    <main class="main">${content}</main>
+    <div class="main">${content}</div>
   `;
 }
 function renderAdminLayout(content) {
@@ -84,7 +86,7 @@ function renderAdminLayout(content) {
       </div>
       <button id="btn-logout" class="primaryButton">Log out</button>
     </nav>
-    <main class="main">${content}</main>
+    <div class="main">${content}</div>
   `;
 }
 
