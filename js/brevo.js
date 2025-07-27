@@ -16,7 +16,6 @@ export async function sendEmail(template, recipient) {
         }
     } catch (err) {
         console.error("❌ Error selecting user:", err);
-        alert(`Error fetching user: ${err.message}`);
         return;
     }
 
@@ -33,7 +32,6 @@ export async function sendEmail(template, recipient) {
         }
     } catch (err) {
         console.error("❌ Error selecting template:", err);
-        alert(`Error fetching template: ${err.message}`);
         return;
     }
 
@@ -61,9 +59,7 @@ export async function sendEmail(template, recipient) {
 
         const json = await res.json();
         console.log("✅ Email sent successfully:", json);
-        alert(json.message);
     } catch (err) {
         console.error("❌ Error sending email:", err);
-        alert(`Error sending email: ${err.message}`);
     }
 }

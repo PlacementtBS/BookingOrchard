@@ -55,7 +55,6 @@ export async function login(email, password) {
     const user = users[0];
     if (!user) {
       console.warn(`Login failed: no user with email ${email}`);
-      alert("Invalid email or password.");
       return false;
     }
 
@@ -72,13 +71,11 @@ export async function login(email, password) {
       return true;
     } else {
       console.warn("Login failed: password mismatch");
-      alert("Invalid email or password.");
       return false;
     }
 
   } catch (err) {
     console.error("Error during login:", err);
-    alert("An error occurred during login.");
     return false;
   }
 }
