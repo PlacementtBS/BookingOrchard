@@ -9,7 +9,8 @@ body {
   background-attachment: fixed;
 }
 .content{
-  padding-top: 100px;
+  margin-top: 100px;
+  padding:10px;
   display: flex;
   flex-direction: column;
   vertical-align: middle;
@@ -40,11 +41,13 @@ header {
   display: flex;
   position: fixed;
   height: 50px;
-  width: 100%;
+  margin: 0;
+  margin-top: -100px;
+  width: calc(100% - 20px);
   background-color: white;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
+  padding: 10px;
   z-index: 100;
   background-color: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -92,11 +95,6 @@ header div a:hover {
 .primaryButton:hover {
   background-color: #3d926c;
 }
-
-main {
-  padding: 2rem 1rem;
-}
-
 h1 {
   font-size: 2rem;
   margin-bottom: 1rem;
@@ -137,8 +135,43 @@ p {
   }
 }
 .hero{
-  width:100%;
+  width:calc(100% - 20px);
   padding:10px;
   border-radius: 10px;
   background: white;
+}
+table {
+    background-color: var(--White);
+    border-radius: 5px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table tr {
+    height: 40px;
+    border-bottom: solid 1px var(--BordersAndLines);
+    justify-content: space-between;
+    border-bottom: solid 1px #f1f5f5;5
+}
+
+table tr:hover {
+    background-color: var(--BordersAndLines);
+}
+
+table th {
+    text-align: center;
+    padding-left: 5px;
+    padding-right: 5px;
+    color: var(--Secondary);
+    width: fit-content;
+    text-transform: uppercase;
+    font-size: 10pt;
+    vertical-align: middle;
+}
+
+table td {
+    text-align: center;
+    padding-left: 5px;
+    padding-right: 5px;
+    vertical-align: middle;
 }

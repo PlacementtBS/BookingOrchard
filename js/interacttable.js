@@ -2,7 +2,6 @@ import { insert, update, remove } from './db.js';
 
 export function renderTablePage(
   targetId,
-  
   {
     tableLabel,
     columns,
@@ -11,7 +10,7 @@ export function renderTablePage(
     tableName,
     idColumn = 'id',
     extraInsertFields = {},
-    dropdowns = {} // now supports { options, formId }
+    dropdowns = {} // supports { options, formId }
   }
 ) {
   const container = document.getElementById(targetId);
@@ -56,7 +55,12 @@ export function renderTablePage(
   function renderTable() {
     tbody.innerHTML = '';
 
-    data.forEach(({ id, values }, rowIndex) => {
+    data.forEach((rowObj, rowIndex) => {
+      const id = rowObj.id;
+      const values = Array.isArray(rowObj.values)
+        ? rowObj.values
+        : columns.map((col) => rowObj[col]);
+
       const tr = document.createElement('tr');
 
       columns.forEach((colName, colIndex) => {
@@ -102,7 +106,7 @@ export function renderTablePage(
               const obj = { ...extraInsertFields };
               columns.forEach((c, i) => {
                 const val = data[rowIndex].values[i] ?? '';
-                obj[c] = val === '' ? null : val;
+                if (val !== '') obj[c] = val;
               });
 
               try {
@@ -130,7 +134,7 @@ export function renderTablePage(
               const obj = { ...extraInsertFields };
               columns.forEach((c, i) => {
                 const val = data[rowIndex].values[i]?.trim() ?? '';
-                obj[c] = val === '' ? null : val;
+                if (val !== '') obj[c] = val;
               });
 
               try {
@@ -183,7 +187,7 @@ export function renderTablePage(
     // New row for insert
     const tr = document.createElement('tr');
 
-    columns.forEach((colName, colIndex) => {
+    columns.forEach((colName) => {
       const td = document.createElement('td');
 
       if (dropdowns[colName]) {
@@ -246,7 +250,7 @@ export function renderTablePage(
       const obj = { ...extraInsertFields };
       columns.forEach((c, i) => {
         const val = rowValues[i];
-        obj[c] = val === '' ? null : val;
+        if (val !== '') obj[c] = val;
       });
 
       try {
