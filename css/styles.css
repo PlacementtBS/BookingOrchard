@@ -72,6 +72,7 @@ nav {
     position: fixed;
     flex-direction: column;
     display: flex;
+    gap:10px;
     margin-top: 6px;
     padding: 10px;
     margin-left: 150px;
@@ -86,6 +87,7 @@ nav {
 
 /* Section */
 section {
+    gap:10px;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -361,4 +363,10 @@ section .third {
 }
 .card div{
     padding:0;
+}
+.fullHeight{
+    height:100%;
+}
+.halfHeight{
+    height:50%;
 }
