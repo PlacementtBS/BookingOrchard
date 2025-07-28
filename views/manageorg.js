@@ -2,7 +2,7 @@ import { select } from "../js/db.js";
 import createOrganisation from "../js/organisations.js";
 
 export default async function manageorg() {
-    const organisation = await select("organisations");
+  const organisation = await select("organisations");
 
   const rows = (organisation || [])
     .map(
@@ -10,12 +10,16 @@ export default async function manageorg() {
       <tr>
         <td>${o.name}</td>
         <td>${new Date(o.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="outlineButton delete-org-btn" data-id="${o.id}" style="padding: 4px 8px; font-size: 0.9rem;">
+            Remove
+          </button>
+        </td>
       </tr>
     `
     )
     .join("");
 
-//david is an absolute fuckwit at js, but its okay
   return `
     <section>
         <div> 
@@ -47,56 +51,60 @@ export default async function manageorg() {
 
       <div id="org-list-container">
         <h3>Existing Organisations</h3>
-<table>
-        <thead>
-          <tr>
-            <th>Name</th>
-          </tr>
-        </thead>
-        <tbody id="organisations-table">
-          ${rows}
-        </tbody>
-      </table>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Created At</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="organisations-table">
+            ${rows}
+          </tbody>
+        </table>
       </div>
-      </section>
+    </section>
   `;
 }
 
-// Export the init logic so it can be called manually
+// Listener setup
 export async function attachManageOrgListeners() {
   const form = document.getElementById('add-org-form');
-  const orgList = document.getElementById('org-list');
+  const orgTableBody = document.getElementById('organisations-table');
 
+  // Fetch orgs fresh and re-render the table body (only)
   async function fetchAndRenderOrgs() {
-    orgList.innerHTML = '<li>Loading organisations...</li>';
     try {
-     const res = await fetch('/api/organisations/');
-if (!res.ok) throw new Error('Failed to fetch');
-const orgs = await res.json();
-
+      const res = await fetch('/api/organisations/');
+      if (!res.ok) throw new Error('Failed to fetch organisations');
+      const orgs = await res.json();
 
       if (orgs.length === 0) {
-        orgList.innerHTML = '<li>No organisations found.</li>';
+        orgTableBody.innerHTML = '<tr><td colspan="3">No organisations found.</td></tr>';
         return;
       }
 
-      orgList.innerHTML = orgs.map(org => `
-        <li style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>${org.name}</span>
-          <button class="outlineButton delete-org-btn" data-id="${org.id}" style="padding: 4px 8px; font-size: 0.9rem;">
-            Remove
-          </button>
-        </li>
+      orgTableBody.innerHTML = orgs.map(o => `
+        <tr>
+          <td>${o.name}</td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td>
+            <button class="outlineButton delete-org-btn" data-id="${o.id}" style="padding: 4px 8px; font-size: 0.9rem;">
+              Remove
+            </button>
+          </td>
+        </tr>
       `).join('');
-    } catch (error) {
-      orgList.innerHTML = '<li style="color: red;">Error loading organisations.</li>';
+    } catch (err) {
+      orgTableBody.innerHTML = '<tr><td colspan="3" style="color: red;">Error loading organisations.</td></tr>';
     }
   }
 
-  // Initial render
+  // Initial load
   await fetchAndRenderOrgs();
 
-  // Form submission
+  // Handle adding organisation
   form.addEventListener('submit', async e => {
     e.preventDefault();
 
@@ -120,8 +128,8 @@ const orgs = await res.json();
     }
   });
 
-  // Delegated event listener for delete buttons
-  orgList.addEventListener('click', async e => {
+  // Delegate delete button clicks inside the table body
+  orgTableBody.addEventListener('click', async e => {
     if (e.target.classList.contains('delete-org-btn')) {
       const id = e.target.dataset.id;
       if (!confirm('Are you sure you want to delete this organisation?')) return;
