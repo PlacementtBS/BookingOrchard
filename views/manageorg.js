@@ -1,6 +1,21 @@
+import { select } from "../js/db.js";
 import createOrganisation from "../js/organisations.js";
 
-export default function manageorg() {
+export default async function manageorg() {
+    const organisation = await select("organisations");
+
+  const rows = (organisation || [])
+    .map(
+      (o) => `
+      <tr>
+        <td>${o.name}</td>
+        <td>${new Date(o.created_at).toLocaleDateString()}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+//david is an absolute fuckwit at js, but its okay
   return `
     <section>
         <div> 
@@ -32,23 +47,33 @@ export default function manageorg() {
 
       <div id="org-list-container">
         <h3>Existing Organisations</h3>
-        <ul id="org-list">
-          <li>Loading organisations...</li>
-        </ul>
+<table>
+        <thead>
+          <tr>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody id="organisations-table">
+          ${rows}
+        </tbody>
+      </table>
       </div>
-    </section>
+      </section>
   `;
 }
 
-export async function initManageOrg() {
+// Export the init logic so it can be called manually
+export async function attachManageOrgListeners() {
+  const form = document.getElementById('add-org-form');
   const orgList = document.getElementById('org-list');
 
   async function fetchAndRenderOrgs() {
     orgList.innerHTML = '<li>Loading organisations...</li>';
     try {
-      const res = await fetch('/api/organisations/');
-      if (!res.ok) throw new Error('Failed to fetch organisations');
-      const orgs = await res.json();
+     const res = await fetch('/api/organisations/');
+if (!res.ok) throw new Error('Failed to fetch');
+const orgs = await res.json();
+
 
       if (orgs.length === 0) {
         orgList.innerHTML = '<li>No organisations found.</li>';
@@ -58,36 +83,21 @@ export async function initManageOrg() {
       orgList.innerHTML = orgs.map(org => `
         <li style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
           <span>${org.name}</span>
-          <button
-            data-id="${org.id}"
-            class="outlineButton"
-            style="padding: 4px 8px; font-size: 0.9rem;"
-          >Remove</button>
+          <button class="outlineButton delete-org-btn" data-id="${org.id}" style="padding: 4px 8px; font-size: 0.9rem;">
+            Remove
+          </button>
         </li>
       `).join('');
-
-      orgList.querySelectorAll('button').forEach(btn => {
-        btn.onclick = async () => {
-          if (!confirm('Are you sure you want to delete this organisation?')) return;
-          const id = btn.dataset.id;
-          const delRes = await fetch(`/api/organisations/${id}/`, { method: 'DELETE' });
-          if (delRes.ok) {
-            await fetchAndRenderOrgs();
-          } else {
-            alert('Failed to delete organisation');
-          }
-        };
-      });
     } catch (error) {
       orgList.innerHTML = '<li style="color: red;">Error loading organisations.</li>';
-      console.error(error);
     }
   }
 
+  // Initial render
   await fetchAndRenderOrgs();
 
-  const form = document.getElementById('add-org-form');
-  form.onsubmit = async e => {
+  // Form submission
+  form.addEventListener('submit', async e => {
     e.preventDefault();
 
     const name = document.getElementById('org-name').value.trim();
@@ -108,5 +118,24 @@ export async function initManageOrg() {
       console.error(err);
       alert('Failed to create organisation');
     }
-  };
+  });
+
+  // Delegated event listener for delete buttons
+  orgList.addEventListener('click', async e => {
+    if (e.target.classList.contains('delete-org-btn')) {
+      const id = e.target.dataset.id;
+      if (!confirm('Are you sure you want to delete this organisation?')) return;
+
+      try {
+        const res = await fetch(`/api/organisations/${id}/`, { method: 'DELETE' });
+        if (res.ok) {
+          await fetchAndRenderOrgs();
+        } else {
+          alert('Failed to delete organisation.');
+        }
+      } catch (err) {
+        alert('Error deleting organisation.');
+      }
+    }
+  });
 }

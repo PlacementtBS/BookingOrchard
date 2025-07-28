@@ -1,11 +1,10 @@
 import renderHome from '../views/home.js';
 import renderLogin, { setupLoginForm } from '../views/login.js';
 import { checkSession, logout } from './auth.js';
-import manageorg from '../views/manageorg.js';
 import bookingsPage, { loadBookings } from "../views/bookings.js";
 import { bookableSpacesAfterRender, bookableSpacesHTML } from '../views/bookableSpaces.js';
 import { updates } from '../views/updates.js';
-
+import manageorg, { attachManageOrgListeners } from '../views/manageorg.js'; 
 let currentUser = null;
 
 const publicRoutes = {
@@ -32,7 +31,12 @@ const privateRoutes = {
 const adminRoutes = {
   '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
   '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
-  '/manageorg': manageorg,
+  '/manageorg': async () => {
+  const html = manageorg(); // just returns the HTML
+  setTimeout(() => attachManageOrgListeners(), 0); // attaches logic after render
+  return html;
+},
+
 };
 
 // Switch between public and private styles
