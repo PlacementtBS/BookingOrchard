@@ -1,6 +1,11 @@
 import renderHome from '../views/home.js';
 import renderLogin, { setupLoginForm } from '../views/login.js';
 import { checkSession, logout } from './auth.js';
+<<<<<<< Updated upstream
+=======
+import bookingsPage from '../views/bookings.js';
+import manageorg from '../views/manageorg.js';
+>>>>>>> Stashed changes
 
 let currentUser = null;
 
@@ -18,6 +23,7 @@ const privateRoutes = {
 const adminRoutes = {
   '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
   '/profile': () => `<p>User profile for ${currentUser?.email || ''}</p>`,
+  '/manageorg': manageorg,
 };
 
 // Switch between public and private styles
@@ -81,6 +87,8 @@ function renderAdminLayout(content) {
         <a href="#/tasks" class="nav-link">Tasks</a>
         <a href="#/notifications" class="nav-link">Notifications</a>
         <hr />
+        <h4>Organisations</h4>
+        <a href="#/manageorg" class="nav-link">Manage</a>
       </div>
       <button id="btn-logout" class="primaryButton">Log out</button>
     </nav>
@@ -102,6 +110,27 @@ async function router() {
 
   // Authenticated + private route
   if (currentUser && privateRoutes[hash]) {
+    setStylesheet('private');
+    if(currentUser.product == "admin"){
+    const view = adminRoutes[hash];
+    const content = typeof view === 'function' ? await view() : view;
+    app.innerHTML = renderAdminLayout(content);
+    }else {
+      const view = privateRoutes[hash];
+    const content = typeof view === 'function' ? await view() : view;
+    app.innerHTML = renderPrivateLayout(content);
+    }
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        await logout();
+        currentUser = null;
+        location.hash = '#/login';
+      });
+    }
+
+      // Authenticated + private route
+  }else if (currentUser && adminRoutes[hash]) {
     setStylesheet('private');
     if(currentUser.product == "admin"){
     const view = adminRoutes[hash];
