@@ -1,5 +1,6 @@
 import createOrganisation from "../js/organisations.js";
-
+import { renderTablePage } from "../js/interacttable.js";
+import { select } from "../js/db.js";
 export default function manageorg() {
   return `
     <section>
@@ -26,80 +27,34 @@ export default function manageorg() {
           <label for="user-password">Admin Password</label>
           <input type="password" id="user-password" name="user-password" placeholder="Enter password" required />
 
-          <button type="submit" class="primaryButton">Add Organisation</button>
+          <input type="submit" class="primaryButton">
         </form>
       </div>
 
-      <div id="org-list-container">
-        <h3>Existing Organisations</h3>
-        <ul id="org-list">
-          <li>Loading organisations...</li>
-        </ul>
+      <div id="org-list">
       </div>
     </section>
   `;
 }
 
-export async function initManageOrg() {
-  const orgList = document.getElementById('org-list');
-
-  async function fetchAndRenderOrgs() {
-    orgList.innerHTML = '<li>Loading organisations...</li>';
-    try {
-      const res = await fetch('/api/organisations/');
-      if (!res.ok) throw new Error('Failed to fetch organisations');
-      const orgs = await res.json();
-
-      if (orgs.length === 0) {
-        orgList.innerHTML = '<li>No organisations found.</li>';
-        return;
-      }
-
-      orgList.innerHTML = orgs.map(org => `
-        <li style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>${org.name}</span>
-          <button
-            data-id="${org.id}"
-            class="outlineButton"
-            style="padding: 4px 8px; font-size: 0.9rem;"
-          >Remove</button>
-        </li>
-      `).join('');
-
-      orgList.querySelectorAll('button').forEach(btn => {
-        btn.onclick = async () => {
-          if (!confirm('Are you sure you want to delete this organisation?')) return;
-          const id = btn.dataset.id;
-          const delRes = await fetch(`/api/organisations/${id}/`, { method: 'DELETE' });
-          if (delRes.ok) {
-            await fetchAndRenderOrgs();
-          } else {
-            alert('Failed to delete organisation');
-          }
-        };
-      });
-    } catch (error) {
-      orgList.innerHTML = '<li style="color: red;">Error loading organisations.</li>';
-      console.error(error);
-    }
-  }
-
-  await fetchAndRenderOrgs();
-
+export async function attachManageOrgListeners() {
   const form = document.getElementById('add-org-form');
-  form.onsubmit = async e => {
+  const orgTableBody = document.getElementById('organisations-table');
+ 
+  // Handle adding organisation
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-
+ 
     const name = document.getElementById('org-name').value.trim();
     const fname = document.getElementById('user-fname').value.trim();
     const sname = document.getElementById('user-sname').value.trim();
     const email = document.getElementById('user-email').value.trim();
     const password = document.getElementById('user-password').value;
-
+ 
     if (!name || !fname || !sname || !email || !password) {
       return alert('All fields are required.');
     }
-
+ 
     try {
       await createOrganisation(name, fname, sname, email, password);
       form.reset();
@@ -108,5 +63,32 @@ export async function initManageOrg() {
       console.error(err);
       alert('Failed to create organisation');
     }
-  };
-}
+  });
+ 
+
+    const organisations = await select("organisations");
+  
+    const users = await select("users");
+  
+    const usersDrop = users.map(u => ({
+      value: u.id,
+      label: u.forename+" "+u.surname+" ("+u.email+")"
+    }));
+    
+  
+    if (!Array.isArray(organisations)) return;
+  
+    renderTablePage("org-list", {
+      tableLabel: "Organisationslist",
+      columns: ["name", "admin"],
+      friendlyNames: ["Name", "Admin"],
+      tableName: "organisations",
+      data: organisations,
+      idColumn: "id",
+      dropdowns: {
+        admin: {
+          options:usersDrop,
+           allowCreate: false,
+        },
+      },
+});}
