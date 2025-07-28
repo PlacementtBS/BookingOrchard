@@ -56,39 +56,46 @@ export function renderTablePage(
     tbody.innerHTML = '';
 
     data.forEach((rowObj, rowIndex) => {
-      const id = rowObj.id;
-      const values = Array.isArray(rowObj.values)
-        ? rowObj.values
-        : columns.map((col) => rowObj[col]);
+  const id = rowObj.id;
+  const values = Array.isArray(rowObj.values)
+    ? rowObj.values
+    : columns.map((col) => rowObj[col]);
 
-      const tr = document.createElement('tr');
+  data[rowIndex].values = values; // ✅ ADD THIS LINE
+
+  const tr = document.createElement('tr');
+
 
       columns.forEach((colName, colIndex) => {
         const td = document.createElement('td');
         const currentValue = values[colIndex] ?? '';
 
         if (dropdowns[colName]) {
-          const { options = [], formId } = dropdowns[colName];
-          const select = document.createElement('select');
+    const { options = [], formId, allowCreate = false } = dropdowns[colName]; // <-- get allowCreate
 
-          const allOptions = [{ value: '', label: '' }, ...options];
-          if (!allOptions.some((opt) => opt.value === '__create__')) {
-            allOptions.push({ value: '__create__', label: '(Create New)' });
-          }
+    const select = document.createElement('select');
 
-          allOptions.forEach((opt) => {
-            const option = document.createElement('option');
-            option.value = opt.value;
-            option.textContent = opt.label;
-            if (opt.value == currentValue) option.selected = true;
-            select.appendChild(option);
-          });
+    // Build options array, add Create New only if allowCreate is true
+    const allOptions = [{ value: '', label: '' }, ...options];
+    if (allowCreate && !allOptions.some((opt) => opt.value === '__create__')) {
+      allOptions.push({ value: '__create__', label: '(Create New)' });
+    }
+
+    allOptions.forEach((opt) => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      if (opt.value == currentValue) option.selected = true;
+      select.appendChild(option);
+    });
 
           select.addEventListener('change', async () => {
             const newValue = select.value;
 
             if (newValue === '__create__') {
-              if (formId) {
+              if (dropdowns[colName].onCreateNew) {
+                dropdowns[colName].onCreateNew();
+              } else if (formId) {
                 const form = document.getElementById(formId);
                 if (form) {
                   form.style.display = 'flex';
@@ -97,6 +104,7 @@ export function renderTablePage(
                   console.error(`Form with id "${formId}" not found`);
                 }
               }
+              select.value = '';
               return;
             }
 
@@ -184,58 +192,81 @@ export function renderTablePage(
       tbody.appendChild(tr);
     });
 
-    // New row for insert
-    const tr = document.createElement('tr');
+// New row for insert
+const tr = document.createElement('tr');
 
-    columns.forEach((colName) => {
-      const td = document.createElement('td');
+columns.forEach((colName, colIndex) => {
+  const td = document.createElement('td');
 
-      if (dropdowns[colName]) {
-        const { options = [], formId } = dropdowns[colName];
-        const select = document.createElement('select');
+  if (dropdowns[colName]) {
+    const { options = [], formId } = dropdowns[colName];
+    const select = document.createElement('select');
 
-        const allOptions = [{ value: '', label: '' }, ...options];
-        if (!allOptions.some((opt) => opt.value === '__create__')) {
-          allOptions.push({ value: '__create__', label: '(Create New)' });
-        }
+    const allOptions = [{ value: '', label: '' }, ...options];
+    if (!allOptions.some((opt) => opt.value === '__create__')) {
+      allOptions.push({ value: '__create__', label: '(Create New)' });
+    }
 
-        allOptions.forEach((opt) => {
-          const option = document.createElement('option');
-          option.value = opt.value;
-          option.textContent = opt.label;
-          select.appendChild(option);
-        });
-
-        select.addEventListener('change', () => {
-          const newValue = select.value;
-
-          if (newValue === '__create__') {
-            if (formId) {
-              const form = document.getElementById(formId);
-              if (form) {
-                form.style.display = 'block';
-                setupFormClose(formId);
-              } else {
-                console.error(`Form with id "${formId}" not found`);
-              }
-            }
-          }
-        });
-
-        td.appendChild(select);
-        td.addEventListener('blur', handleInsert);
-      } else {
-        td.contentEditable = true;
-        td.addEventListener('blur', handleInsert);
-      }
-
-      tr.appendChild(td);
+    allOptions.forEach((opt) => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      select.appendChild(option);
     });
 
-    const emptyDeleteTd = document.createElement('td');
-    tr.appendChild(emptyDeleteTd);
+    select.addEventListener('change', () => {
+      const newValue = select.value;
 
-    tbody.appendChild(tr);
+      if (newValue === '__create__') {
+        if (formId) {
+          const form = document.getElementById(formId);
+          if (form) {
+            form.style.display = 'block';
+            setupFormClose(formId);
+          } else {
+            console.error(`Form with id "${formId}" not found`);
+          }
+        }
+      }
+    });
+
+    td.appendChild(select);
+    td.addEventListener('blur', handleInsert);
+  } else {
+    td.contentEditable = true;
+
+    // Placeholder logic only for first column
+    if (colIndex === 0) {
+      td.textContent = 'New';
+      td.style.color = 'gray';
+
+      td.addEventListener('focus', () => {
+        if (td.textContent === 'New') {
+          td.textContent = '';
+          td.style.color = 'black';
+        }
+      });
+
+      td.addEventListener('blur', () => {
+        if (td.textContent.trim() === '') {
+          td.textContent = 'New';
+          td.style.color = 'gray';
+        }
+        handleInsert();
+      });
+    } else {
+      td.addEventListener('blur', handleInsert);
+    }
+  }
+
+  tr.appendChild(td);
+});
+
+const emptyDeleteTd = document.createElement('td');
+tr.appendChild(emptyDeleteTd);
+
+tbody.appendChild(tr);
+
 
     async function handleInsert() {
       const rowValues = Array.from(tr.children)
@@ -264,6 +295,19 @@ export function renderTablePage(
       }
     }
   }
+  
 
   renderTable();
+}
+export function updateDropdownOptions(columnName, newOptions) {
+  const dropdownSelects = document.querySelectorAll(`[data-dropdown="${columnName}"]`);
+  dropdownSelects.forEach(select => {
+    select.innerHTML = ""; // Clear existing options
+    newOptions.forEach(opt => {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      select.appendChild(option);
+    });
+  });
 }
