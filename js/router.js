@@ -2,13 +2,16 @@ import renderHome from '../views/home.js';
 import renderLogin, { setupLoginForm } from '../views/login.js';
 import { checkSession, logout } from './auth.js';
 import bookingsPage, { loadBookings } from "../views/bookings.js";
+import { bookableSpacesAfterRender, bookableSpacesHTML } from '../views/bookableSpaces.js';
+import { updates } from '../views/updates.js';
+
 
 let currentUser = null;
 
 const publicRoutes = {
   '/': renderHome,
   '/login': renderLogin,
-  '/updates': () => '<p>Updates coming soon…</p>',
+  '/updates': updates,
 };
 
 const privateRoutes = {
@@ -19,6 +22,11 @@ const privateRoutes = {
     setTimeout(() => loadBookings(currentUser), 0); // Load data after render
     return html;
   },
+  '/bookableSpaces': async () => {
+  const html = bookableSpacesHTML();
+  setTimeout(() => bookableSpacesAfterRender(currentUser), 0);
+  return html;
+},
 };
 
 const adminRoutes = {
@@ -67,7 +75,7 @@ function renderPrivateLayout(content) {
         <hr />
         <h4>Settings</h4>
         <a href="#/userManagement" class="nav-link sub">Users</a>
-        <a href="#/venueManagement" class="nav-link sub">Venue</a>
+        <a href="#/bookableSpaces" class="nav-link sub">Spaces</a>
         <h4>Bookings</h4>
         <a href="#/bookings" class="nav-link">Overview</a>
       </div>
@@ -139,7 +147,11 @@ async function router() {
   // 404 fallback
   } else {
     setStylesheet('public');
-    app.innerHTML = `<main><h2>404 - Page Not Found</h2></main>`;
+    app.innerHTML = `<main><div style="background-color:white;padding:10px;border-radius:10px"><h1>Error 404 : Page Not Found
+    <h2>Sorry, We couldn't find the page you were looking for</h2>
+    <p>Unfortunately, the url you were trying to access is either unavailable or does not exist on our system. It may be the case that you are trying to access a page that requires you to be logged in. If you believe that this is a problem on our end please contact us via</p>
+    <a href="mailto:ben@bookingorchard.com">Ben Scott (ben@bookingorchard.com)</a><p> or </p><a href="mailto:david@bookingorchard.com">David Brasas (david@bookingorchard.com)</a>
+    </div></main>`;
   }
 }
 
