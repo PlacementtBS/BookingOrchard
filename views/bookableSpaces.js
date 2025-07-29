@@ -1,6 +1,7 @@
 import { select } from "../js/db.js";
 import { renderTablePage, updateDropdownOptions } from "../js/interacttable.js";
 import { showInsertPopup } from "../js/popup.js";
+import { subnav } from "../js/subnav.js";
 
 export function bookableSpacesHTML() {
   return `

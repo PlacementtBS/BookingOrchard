@@ -1,11 +1,9 @@
 import { select } from "../js/db.js";
 export default function formsPage() {
+    
   return `
     <section>
-    <div>
-    <h1>Forms</h1>
-    <a href="#/create-form"><button class="primaryButton">New</button></a>
-    </div>
+
     </section>
     <section>
       <div class="cardContainer" id="forms">
@@ -19,6 +17,7 @@ export default function formsPage() {
 export async function loadForms(currentUser) {
   const container = document.getElementById("forms");
   if (!container) return;
+    
 
   container.innerHTML = ""; // Clear loading message
 

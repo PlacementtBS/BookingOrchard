@@ -98,7 +98,7 @@ export async function loadBookings(currentUser) {
         <h4>Client Name</h4>
         <p>${b.clientId}</p>
       </div>
-      <a href="#/booking?id=${b.id}"><button class="primaryButton">View More</button></a>
+      <a href="#/bookings/view?id=${b.id}"><button class="primaryButton">View More</button></a>
     `;
     container.appendChild(card);
   });
