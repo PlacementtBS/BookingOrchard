@@ -10,9 +10,11 @@ export function renderTablePage(
     tableName,
     idColumn = 'id',
     extraInsertFields = {},
-    dropdowns = {} // supports { options, formId }
+    dropdowns = {},
+    editable = true // <-- NEW
   }
-) {
+)
+ {
   const container = document.getElementById(targetId);
 
   if (!container) {
@@ -193,79 +195,108 @@ export function renderTablePage(
     });
 
 // New row for insert
-const tr = document.createElement('tr');
+if (editable) {
+  const tr = document.createElement('tr');
 
-columns.forEach((colName, colIndex) => {
-  const td = document.createElement('td');
+  columns.forEach((colName, colIndex) => {
+    const td = document.createElement('td');
 
-  if (dropdowns[colName]) {
-    const { options = [], formId } = dropdowns[colName];
-    const select = document.createElement('select');
+    if (dropdowns[colName]) {
+      const { options = [], formId } = dropdowns[colName];
+      const select = document.createElement('select');
 
-    const allOptions = [{ value: '', label: '' }, ...options];
-    if (!allOptions.some((opt) => opt.value === '__create__')) {
-      allOptions.push({ value: '__create__', label: '(Create New)' });
-    }
+      const allOptions = [{ value: '', label: '' }, ...options];
+      if (!allOptions.some((opt) => opt.value === '__create__')) {
+        allOptions.push({ value: '__create__', label: '(Create New)' });
+      }
 
-    allOptions.forEach((opt) => {
-      const option = document.createElement('option');
-      option.value = opt.value;
-      option.textContent = opt.label;
-      select.appendChild(option);
-    });
+      allOptions.forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        select.appendChild(option);
+      });
 
-    select.addEventListener('change', () => {
-      const newValue = select.value;
+      select.addEventListener('change', () => {
+        const newValue = select.value;
 
-      if (newValue === '__create__') {
-        if (formId) {
-          const form = document.getElementById(formId);
-          if (form) {
-            form.style.display = 'block';
-            setupFormClose(formId);
-          } else {
-            console.error(`Form with id "${formId}" not found`);
+        if (newValue === '__create__') {
+          if (formId) {
+            const form = document.getElementById(formId);
+            if (form) {
+              form.style.display = 'block';
+              setupFormClose(formId);
+            } else {
+              console.error(`Form with id "${formId}" not found`);
+            }
           }
         }
+      });
+
+      td.appendChild(select);
+      td.addEventListener('blur', handleInsert);
+    } else {
+      td.contentEditable = true;
+
+      if (colIndex === 0) {
+        td.textContent = 'New';
+        td.style.color = 'gray';
+
+        td.addEventListener('focus', () => {
+          if (td.textContent === 'New') {
+            td.textContent = '';
+            td.style.color = 'black';
+          }
+        });
+
+        td.addEventListener('blur', () => {
+          if (td.textContent.trim() === '') {
+            td.textContent = 'New';
+            td.style.color = 'gray';
+          }
+          handleInsert();
+        });
+      } else {
+        td.addEventListener('blur', handleInsert);
       }
+    }
+
+    tr.appendChild(td);
+  });
+
+  const emptyDeleteTd = document.createElement('td');
+  tr.appendChild(emptyDeleteTd);
+
+  tbody.appendChild(tr);
+
+  async function handleInsert() {
+    const rowValues = Array.from(tr.children)
+      .slice(0, columns.length)
+      .map((td) => {
+        if (td.querySelector?.('select')) return td.querySelector('select').value;
+        return td.textContent.trim();
+      });
+
+    if (!rowValues.some((v) => v !== '')) return;
+
+    const obj = { ...extraInsertFields };
+    columns.forEach((c, i) => {
+      const val = rowValues[i];
+      if (val !== '') obj[c] = val;
     });
 
-    td.appendChild(select);
-    td.addEventListener('blur', handleInsert);
-  } else {
-    td.contentEditable = true;
-
-    // Placeholder logic only for first column
-    if (colIndex === 0) {
-      td.textContent = 'New';
-      td.style.color = 'gray';
-
-      td.addEventListener('focus', () => {
-        if (td.textContent === 'New') {
-          td.textContent = '';
-          td.style.color = 'black';
-        }
-      });
-
-      td.addEventListener('blur', () => {
-        if (td.textContent.trim() === '') {
-          td.textContent = 'New';
-          td.style.color = 'gray';
-        }
-        handleInsert();
-      });
-    } else {
-      td.addEventListener('blur', handleInsert);
+    try {
+      const result = await insert(tableName, obj);
+      const inserted = Array.isArray(result) ? result[0] : result;
+      data.push({ id: inserted[idColumn], values: rowValues });
+      console.log(`Inserted row`, inserted);
+      renderTable();
+    } catch (err) {
+      console.error('Failed to insert row:', err);
     }
   }
+}
 
-  tr.appendChild(td);
-});
-
-const emptyDeleteTd = document.createElement('td');
-tr.appendChild(emptyDeleteTd);
-
-tbody.appendChild(tr);
 
 
     async function handleInsert() {
