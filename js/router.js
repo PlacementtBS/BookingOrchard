@@ -98,7 +98,7 @@ const adminRoutes = {
 function setStylesheet(type) {
   const link = document.getElementById('main-style');
   if (link) {
-    link.href = type === 'private' ? 'css/styles.css?v=2' : 'css/public.css';
+    link.href = type === 'private' ? 'css/styles.css?v=3' : 'css/public.css';
   }
 }
 export function markActiveLinks(html) {
