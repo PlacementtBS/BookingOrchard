@@ -1,5 +1,5 @@
 :root {
-    --Primary: #1C824F;
+    --Primary: #1c824f;
     --Secondary: #1C824F;
     --Background: #F4F4F9;
     --ListAndFooter: #7D7D7D;
@@ -21,7 +21,9 @@ body {
     width: 100vw;
     background-color: var(--White);
 }
-
+div{
+    min-width: fit-content;
+}
 /* Navigation */
 nav a {
     display: flex;
@@ -87,13 +89,25 @@ nav {
 
 /* Section */
 section {
-    gap:10px;
+    gap: 10px;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     width: 100%;
     border: solid inset 1px var(--White);
+    /* Remove any overflow or height styles from section itself */
 }
+
+section > div {
+    background-color: var(--White);
+    padding: 10px;
+    border-radius: 5px;
+    width: calc(100% - 10px);
+    overflow-y: auto;
+    max-height: 100%;
+    flex-grow: 1;
+}
+
 
 /* Section headings */
 section h3 {
@@ -231,6 +245,7 @@ input, textarea, select {
 button {
     cursor: pointer;
     transition: background-color 0.2s ease;
+    height: fit-content;
 }
 
 button:disabled {
@@ -298,12 +313,6 @@ header .primaryButton {
     color: var(--Primary);
 }
 
-section div {
-    background-color: var(--White);
-    padding: 10px;
-    border-radius: 5px;
-    width: calc(100% - 10px);
-}
 
 section .third {
     width: 33%;
@@ -343,7 +352,8 @@ section .third {
 }
 .card{
     width: 200px;
-    height: 300px;
+    height: fit-content;
+    gap:5px;
     padding: 10px;
     border-radius: 5px;
     background: var(--White);
@@ -358,7 +368,7 @@ section .third {
     background-position: center;
     background-repeat: none;
 }
-.card .primaryButton{
+.card button{
     width: 100%;
 }
 .card div{
@@ -370,3 +380,45 @@ section .third {
 .halfHeight{
     height:50%;
 } 
+.image{
+    width:calc(100% - 20px);
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    vertical-align: bottom;
+}
+.image h1{
+    color: var(--White);
+    width: fit-content;
+    height: fit-content;
+}
+.image h2{
+    color: var(--White);
+    width: fit-content;
+    height: fit-content;
+}
+.image div{
+    background: rgba(28, 130, 79, 0.5);
+    width: fit-content;
+    height: fit-content;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: auto;
+}
+.static{
+    width:fit-content;
+}
+.static tr{
+    border: none;
+}
+.static tr:hover{
+    background-color: white;
+}
+.static td{
+    text-align: left;
+    padding-right: 20px;
+}

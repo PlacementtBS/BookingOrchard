@@ -1,8 +1,14 @@
 import { select } from "../js/db.js";
+import { showInsertPopup } from "../js/popup.js";
 
 export default function bookingsPage() {
-  // Return the static structure with an empty container
   return `
+    <section>
+      <div>
+        <h1>Bookings</h1>
+        <button id="NewBooking" class="primaryButton">New Booking</button>
+      </div>
+    </section>
     <section>
       <div class="cardContainer" id="bookings">
         <p>Loading bookings...</p>
@@ -14,6 +20,52 @@ export default function bookingsPage() {
 // Call this AFTER rendering to the DOM
 export async function loadBookings(currentUser) {
   const container = document.getElementById("bookings");
+  const newBookingBtn = document.getElementById("NewBooking");
+
+  if (newBookingBtn) {
+  newBookingBtn.addEventListener("click", () => {
+    showInsertPopup({
+      tableName: "bookings",
+      columns: [
+        "name",
+        { name: "startDate", type: "date" },
+        { name: "endDate", type: "date" },
+        { name: "recurring", type: "checkbox" },
+        {
+          name: "recurrence",
+          type: "customGroup",
+          fields: [
+            {
+              name: "basis",
+              label: "Recurrence Basis",
+              type: "select",
+              options: ["Daily", "Weekly", "Monthly"]
+            },
+            {
+              name: "days",
+              label: "Days of Week",
+              type: "checkboxGroup",
+              options: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            }
+          ]
+        }
+      ],
+      friendlyNames: [
+        "Booking Name",
+        "Start Date",
+        "End Date",
+        "Recurring?",
+        "Recurrence Settings"
+      ],
+      extraInsertFields: {
+        oId: currentUser.organisationId,
+        uId: currentUser.id
+      }
+    });
+  });
+}
+
+
   if (!container) return;
 
   container.innerHTML = ""; // Clear loading message
@@ -40,13 +92,13 @@ export async function loadBookings(currentUser) {
       </div>
       <div>
         <h4>Dates</h4>
-        <p>${b.startDate} - ${b.endDate}</p>
+        <p>${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}</p>
       </div>
       <div>
         <h4>Client Name</h4>
         <p>${b.clientId}</p>
       </div>
-      <button class="primaryButton">View More</button>
+      <a href="#/booking?id=${b.id}"><button class="primaryButton">View More</button></a>
     `;
     container.appendChild(card);
   });
