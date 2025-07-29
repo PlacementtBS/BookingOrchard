@@ -5,6 +5,10 @@ import manageorg, { attachManageOrgListeners } from '../views/manageorg.js';
 import bookingsPage, { loadBookings } from "../views/bookings.js";
 import { bookableSpacesAfterRender, bookableSpacesHTML } from '../views/bookableSpaces.js';
 import { updates } from '../views/updates.js';
+import bookingHTML, { bookingAfterRender } from '../views/bookingPage.js';
+import formBuilderPage, { loadFormBuilderPage } from '../views/createCustomForm.js';
+import { renderFormById } from '../views/viewCustomForm.js';
+import formsPage, { loadForms } from '../views/forms.js';
 
 let currentUser = null;
 
@@ -12,6 +16,7 @@ const publicRoutes = {
   '/': renderHome,
   '/login': renderLogin,
   '/updates': updates,
+  '/form': renderFormById,
 };
 
 const privateRoutes = {
@@ -22,11 +27,29 @@ const privateRoutes = {
     setTimeout(() => loadBookings(currentUser), 0); // Load data after render
     return html;
   },
+  '/forms': async () => {
+    const html = formsPage(currentUser);
+    setTimeout(() => loadForms(currentUser), 0); // Load data after render
+    return html;
+  },
   '/bookableSpaces': async () => {
   const html = bookableSpacesHTML();
   setTimeout(() => bookableSpacesAfterRender(currentUser), 0);
   return html;
 },
+  '/booking' : async () => {
+    const html = bookingHTML();
+    setTimeout(() => bookingAfterRender(currentUser), 0);
+    return html;
+  },
+  '/create-form': async () => {
+  const html = formBuilderPage(); // returns the HTML structure
+  setTimeout(() => loadFormBuilderPage(currentUser), 0); // handles DOM interaction after render
+  return html;
+},
+
+
+
 };
 
 const adminRoutes = {
@@ -81,6 +104,7 @@ function renderPrivateLayout(content) {
         <h4>Settings</h4>
         <a href="#/userManagement" class="nav-link sub">Users</a>
         <a href="#/bookableSpaces" class="nav-link sub">Spaces</a>
+        <a href="#/forms" class="nav-link sub">Forms</a>
         <h4>Bookings</h4>
         <a href="#/bookings" class="nav-link">Overview</a>
       </div>
@@ -110,26 +134,27 @@ function renderAdminLayout(content) {
 }
 
 async function router() {
-  const hash = location.hash.slice(1) || '/';
+  const fullHash = location.hash.slice(1) || '/';
+  const [hashPath] = fullHash.split('?'); // Ignore query params
   const app = document.getElementById('app');
 
   currentUser = await checkSession();
 
   // Unauthenticated trying to access private route
-  if (!currentUser && privateRoutes[hash]) {
-    location.hash = '#/login';
+  if (!currentUser && privateRoutes[hashPath]) {
+    location.hashPath = '#/login';
     return;
   }
 
   // Authenticated + private route
-  if (currentUser && privateRoutes[hash]) {
+  if (currentUser && privateRoutes[hashPath]) {
     setStylesheet('private');
     if(currentUser.product == "admin"){
-    const view = adminRoutes[hash];
+    const view = adminRoutes[hashPath];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderAdminLayout(content);
     }else {
-      const view = privateRoutes[hash];
+      const view = privateRoutes[hashPath];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderPrivateLayout(content);
     }
@@ -143,14 +168,14 @@ async function router() {
     }
 
       // Authenticated + private route
-  }else if (currentUser && adminRoutes[hash]) {
+  }else if (currentUser && adminRoutes[hashPath]) {
     setStylesheet('private');
     if(currentUser.product == "admin"){
-    const view = adminRoutes[hash];
+    const view = adminRoutes[hashPath];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderAdminLayout(content);
     }else {
-      const view = privateRoutes[hash];
+      const view = privateRoutes[hashPath];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderPrivateLayout(content);
     }
@@ -164,13 +189,13 @@ async function router() {
     }
 
   // Public route
-  } else if (publicRoutes[hash]) {
+  } else if (publicRoutes[hashPath]) {
     setStylesheet('public');
-    const view = publicRoutes[hash];
+    const view = publicRoutes[hashPath];
     const content = typeof view === 'function' ? await view() : view;
     app.innerHTML = renderPublicLayout(content);
 
-    if (hash === '/login') setupLoginForm?.();
+    if (hashPath === '/login') setupLoginForm?.();
 
   // 404 fallback
   } else {

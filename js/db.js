@@ -15,11 +15,21 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
  * @param {object|array} data - Row or array of rows to insert
  * @returns {Promise<object|array>} - Inserted data
  */
-export async function insert(table, data) {
-  const { data: result, error } = await supabase.from(table).insert(data);
-  if (error) throw error;
-  return result;
+export async function insert(table, values) {
+  const { data, error } = await supabase
+    .from(table)
+    .insert(values)
+    .select()      // fetch the inserted rows back
+    .single();     // get one row as object
+
+  if (error) {
+    console.error("Insert error:", error);
+    throw error;
+  }
+
+  return data;  // data contains the inserted row with id
 }
+
 
 /**
  * Select data from a table
