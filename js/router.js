@@ -11,6 +11,7 @@ import { renderFormById } from '../views/viewCustomForm.js';
 import formsPage, { loadForms } from '../views/forms.js';
 import { loadSettings, settingsPage } from '../views/settings.js';
 import { subnav } from './subnav.js';
+import { loadUsersPage, usersPageHtml } from '../views/usermanagement.js';
 
 let currentUser = null;
 const formsSubNav = subnav([
@@ -81,7 +82,14 @@ const privateRoutes = {
       ${html}
       `);
   },
-  '/settings/userManagement':  () => `<h2>User Management Page Not Yet Created</h2>`,
+  '/settings/userManagement': async () => {
+  const html = usersPageHtml();
+  setTimeout(() => loadUsersPage(currentUser), 0);
+  return (`
+      ${settingsSubNav}
+      ${html}
+      `);
+  },
 };
 
 const adminRoutes = {
