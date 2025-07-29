@@ -12,6 +12,9 @@ import formsPage, { loadForms } from '../views/forms.js';
 import { loadSettings, settingsPage } from '../views/settings.js';
 import { subnav } from './subnav.js';
 import { loadUsersPage, usersPageHtml } from '../views/usermanagement.js';
+import { orgSettings } from '../views/orgSettings.js';
+import { bookingWorflowHTML, loadBookingWorkflow } from '../views/bookingWorkflow.js';
+import { bookableEquipmentAfterRender, bookableEquipmentHTML } from '../views/bookableEquipment.js';
 
 let currentUser = null;
 const formsSubNav = subnav([
@@ -23,6 +26,8 @@ const settingsSubNav = subnav([
       { link: '#/settings/profile', label: 'Profile' },
       { link: '#/settings/userManagement', label: 'Users' },
       { link: '#/settings/bookableSpaces', label: 'Spaces' },
+      { link: '#/settings/bookableEquipment', label: 'Equipment' },
+      { link: '#/settings/orgSettings', label: 'Organisation' },
     ])
 const publicRoutes = {
   '/': renderHome,
@@ -82,6 +87,14 @@ const privateRoutes = {
       ${html}
       `);
   },
+  '/settings/bookableEquipment': async () => {
+  const html = bookableEquipmentHTML();
+  setTimeout(() => bookableEquipmentAfterRender(currentUser), 0);
+  return (`
+      ${settingsSubNav}
+      ${html}
+      `);
+  },
   '/settings/userManagement': async () => {
   const html = usersPageHtml();
   setTimeout(() => loadUsersPage(currentUser), 0);
@@ -90,6 +103,20 @@ const privateRoutes = {
       ${html}
       `);
   },
+  '/settings/orgSettings': async () => {
+    return (`
+      ${settingsSubNav}
+      ${orgSettings()}
+      `)
+    },
+  '/settings/bookingWorkflow': async () => {
+    const html = bookingWorflowHTML();
+    setTimeout(() => loadBookingWorkflow(currentUser), 0);
+    return (`
+      ${settingsSubNav}
+      ${html}
+      `)
+  }
 };
 
 const adminRoutes = {
