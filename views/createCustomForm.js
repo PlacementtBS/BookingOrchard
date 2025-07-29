@@ -55,7 +55,7 @@ export async function loadFormBuilderPage(currentUser) {
         return;
       }
 
-      location.hash = `#/create-form?id=${result.id}`;
+      location.hash = `#/forms/create?id=${result.id}`;
     });
 
   } else {

@@ -40,7 +40,7 @@ export async function loadForms(currentUser) {
         <h4>Name</h4>
         <p>${f.name}</p>
       </div>
-      <a href="#/create-form?id=${f.id}"><button class="primaryButton">Edit</button></a>
+      <a href="#/forms/create?id=${f.id}"><button class="primaryButton">Edit</button></a>
       <a href="#/form?id=${f.id}" target="_blank"><button class="outlineButton">View</button></a>
     `;
     container.appendChild(card);
