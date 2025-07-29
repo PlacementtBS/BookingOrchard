@@ -5,6 +5,7 @@ export default function formBuilderPage() {
   const id = urlParams.get("id");
   return `
     <section>
+      
         <div id="formBuilderContainer"></div>
         <div id="formBuilderPreview"></div>
     </section>

@@ -34,6 +34,9 @@ nav a {
     padding: 5px;
     border-radius: 5px;
 }
+nav svg{
+    width:20px;
+}
 
 nav div {
     display: flex;
@@ -421,4 +424,25 @@ section .third {
 .static td{
     text-align: left;
     padding-right: 20px;
+}
+.subnav {
+  background: var(--White);
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  border-radius: 8px;
+}
+.subnav a{
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 8px;
+}
+.subnav a:hover{
+    background-color: var(--BordersAndLines);
+    
+}
+.activesubnav{
+    background-color: #6ab18e;
+    color:white;
 }
