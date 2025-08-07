@@ -173,6 +173,20 @@ form label {
     font-weight: bold;
     font-size: small;
 }
+.timingInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+.timingRow {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+.timingRow label {
+  min-width: 100px;
+}
+
 
 form input {
     height: 25px;
