@@ -128,6 +128,7 @@ export function showInsertPopup({
       const select = document.createElement('select');
       select.name = col;
 
+      // Expecting dropdowns[col].options to be [{value, label}, ...]
       const options = [{ value: '', label: '' }, ...dropdowns[col].options];
       options.forEach(opt => {
         const option = document.createElement('option');

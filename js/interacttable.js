@@ -13,8 +13,7 @@ export function renderTablePage(
     dropdowns = {},
     editable = true // <-- NEW
   }
-)
- {
+) {
   const container = document.getElementById(targetId);
 
   if (!container) {
@@ -58,45 +57,45 @@ export function renderTablePage(
     tbody.innerHTML = '';
 
     data.forEach((rowObj, rowIndex) => {
-  const id = rowObj.id;
-  const values = Array.isArray(rowObj.values)
-    ? rowObj.values
-    : columns.map((col) => rowObj[col]);
+      const id = rowObj.id;
+      const values = Array.isArray(rowObj.values)
+        ? rowObj.values
+        : columns.map((col) => rowObj[col]);
 
-  data[rowIndex].values = values; // ✅ ADD THIS LINE
+      data[rowIndex].values = values; // update values to ensure sync
 
-  const tr = document.createElement('tr');
-
+      const tr = document.createElement('tr');
 
       columns.forEach((colName, colIndex) => {
         const td = document.createElement('td');
         const currentValue = values[colIndex] ?? '';
 
         if (dropdowns[colName]) {
-    const { options = [], formId, allowCreate = false } = dropdowns[colName]; // <-- get allowCreate
+          const { options = [], formId, allowCreate = false, onCreateNew } = dropdowns[colName];
 
-    const select = document.createElement('select');
+          const select = document.createElement('select');
+          select.setAttribute('data-dropdown', colName);
 
-    // Build options array, add Create New only if allowCreate is true
-    const allOptions = [{ value: '', label: '' }, ...options];
-    if (allowCreate && !allOptions.some((opt) => opt.value === '__create__')) {
-      allOptions.push({ value: '__create__', label: '(Create New)' });
-    }
+          const allOptions = [{ value: null, label: '' }, ...options];
 
-    allOptions.forEach((opt) => {
-      const option = document.createElement('option');
-      option.value = opt.value;
-      option.textContent = opt.label;
-      if (opt.value == currentValue) option.selected = true;
-      select.appendChild(option);
-    });
+          if (allowCreate && !allOptions.some((opt) => opt.value === '__create__')) {
+            allOptions.push({ value: '__create__', label: '(Create New)' });
+          }
+
+          allOptions.forEach((opt) => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (opt.value == currentValue) option.selected = true;
+            select.appendChild(option);
+          });
 
           select.addEventListener('change', async () => {
             const newValue = select.value;
 
             if (newValue === '__create__') {
-              if (dropdowns[colName].onCreateNew) {
-                dropdowns[colName].onCreateNew();
+              if (onCreateNew) {
+                onCreateNew();
               } else if (formId) {
                 const form = document.getElementById(formId);
                 if (form) {
@@ -115,8 +114,9 @@ export function renderTablePage(
 
               const obj = { ...extraInsertFields };
               columns.forEach((c, i) => {
-                const val = data[rowIndex].values[i] ?? '';
-                if (val !== '') obj[c] = val;
+                let val = data[rowIndex].values[i];
+                if (val === '') val = null; // convert empty string to null
+                if (val !== null && val !== undefined) obj[c] = val;
               });
 
               try {
@@ -135,30 +135,33 @@ export function renderTablePage(
           td.appendChild(select);
         } else {
           td.textContent = currentValue;
-          td.contentEditable = true;
-          td.addEventListener('blur', async () => {
-            const newValue = td.textContent.trim();
-            if (data[rowIndex].values[colIndex] !== newValue) {
-              data[rowIndex].values[colIndex] = newValue;
+          if (editable) {
+            td.contentEditable = true;
+            td.addEventListener('blur', async () => {
+              const newValue = td.textContent.trim();
+              if (data[rowIndex].values[colIndex] !== newValue) {
+                data[rowIndex].values[colIndex] = newValue;
 
-              const obj = { ...extraInsertFields };
-              columns.forEach((c, i) => {
-                const val = data[rowIndex].values[i]?.trim() ?? '';
-                if (val !== '') obj[c] = val;
-              });
-
-              try {
-                await update(tableName, obj, {
-                  column: idColumn,
-                  operator: 'eq',
-                  value: id
+                const obj = { ...extraInsertFields };
+                columns.forEach((c, i) => {
+                  let val = data[rowIndex].values[i];
+                  if (val === '') val = null;
+                  if (val !== null && val !== undefined) obj[c] = val;
                 });
-                console.log(`Updated row ${id}`, obj);
-              } catch (err) {
-                console.error(`Failed to update row ${id}:`, err);
+
+                try {
+                  await update(tableName, obj, {
+                    column: idColumn,
+                    operator: 'eq',
+                    value: id
+                  });
+                  console.log(`Updated row ${id}`, obj);
+                } catch (err) {
+                  console.error(`Failed to update row ${id}:`, err);
+                }
               }
-            }
-          });
+            });
+          }
         }
 
         tr.appendChild(td);
@@ -194,142 +197,122 @@ export function renderTablePage(
       tbody.appendChild(tr);
     });
 
-// New row for insert
-if (editable) {
-  const tr = document.createElement('tr');
+    // New row for insert if editable
+    if (editable) {
+      const tr = document.createElement('tr');
 
-  columns.forEach((colName, colIndex) => {
-    const td = document.createElement('td');
+      columns.forEach((colName, colIndex) => {
+        const td = document.createElement('td');
 
-    if (dropdowns[colName]) {
-      const { options = [], formId } = dropdowns[colName];
-      const select = document.createElement('select');
+        if (dropdowns[colName]) {
+          const { options = [], formId, allowCreate = false } = dropdowns[colName];
+          const select = document.createElement('select');
+          select.setAttribute('data-dropdown', colName);
 
-      const allOptions = [{ value: '', label: '' }, ...options];
-      if (!allOptions.some((opt) => opt.value === '__create__')) {
-        allOptions.push({ value: '__create__', label: '(Create New)' });
-      }
+          const allOptions = [{ value: '', label: '' }, ...options];
+          if (allowCreate && !allOptions.some((opt) => opt.value === '__create__')) {
+            allOptions.push({ value: '__create__', label: '(Create New)' });
+          }
 
-      allOptions.forEach((opt) => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        select.appendChild(option);
-      });
+          allOptions.forEach((opt) => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            select.appendChild(option);
+          });
 
-      select.addEventListener('change', () => {
-        const newValue = select.value;
-
-        if (newValue === '__create__') {
-          if (formId) {
-            const form = document.getElementById(formId);
-            if (form) {
-              form.style.display = 'block';
-              setupFormClose(formId);
-            } else {
-              console.error(`Form with id "${formId}" not found`);
+          select.addEventListener('change', () => {
+            const newValue = select.value;
+            if (newValue === '__create__') {
+              if (formId) {
+                const form = document.getElementById(formId);
+                if (form) {
+                  form.style.display = 'block';
+                  setupFormClose(formId);
+                } else {
+                  console.error(`Form with id "${formId}" not found`);
+                }
+              }
             }
-          }
-        }
-      });
+            handleInsert(); // call insert after select changes
+          });
 
-      td.appendChild(select);
-      td.addEventListener('blur', handleInsert);
-    } else {
-      td.contentEditable = true;
+          td.appendChild(select);
+        } else {
+          td.contentEditable = true;
 
-      if (colIndex === 0) {
-        td.textContent = 'New';
-        td.style.color = 'gray';
-
-        td.addEventListener('focus', () => {
-          if (td.textContent === 'New') {
-            td.textContent = '';
-            td.style.color = 'black';
-          }
-        });
-
-        td.addEventListener('blur', () => {
-          if (td.textContent.trim() === '') {
+          if (colIndex === 0) {
             td.textContent = 'New';
             td.style.color = 'gray';
+
+            td.addEventListener('focus', () => {
+              if (td.textContent === 'New') {
+                td.textContent = '';
+                td.style.color = 'black';
+              }
+            });
+
+            td.addEventListener('blur', () => {
+              if (td.textContent.trim() === '') {
+                td.textContent = 'New';
+                td.style.color = 'gray';
+              }
+              handleInsert();
+            });
+          } else {
+            td.addEventListener('blur', handleInsert);
           }
-          handleInsert();
-        });
-      } else {
-        td.addEventListener('blur', handleInsert);
-      }
-    }
+        }
 
-    tr.appendChild(td);
-  });
-
-  const emptyDeleteTd = document.createElement('td');
-  tr.appendChild(emptyDeleteTd);
-
-  tbody.appendChild(tr);
-
-  async function handleInsert() {
-    const rowValues = Array.from(tr.children)
-      .slice(0, columns.length)
-      .map((td) => {
-        if (td.querySelector?.('select')) return td.querySelector('select').value;
-        return td.textContent.trim();
+        tr.appendChild(td);
       });
 
-    if (!rowValues.some((v) => v !== '')) return;
+      const emptyDeleteTd = document.createElement('td');
+      tr.appendChild(emptyDeleteTd);
 
-    const obj = { ...extraInsertFields };
-    columns.forEach((c, i) => {
-      const val = rowValues[i];
-      if (val !== '') obj[c] = val;
-    });
+      tbody.appendChild(tr);
 
-    try {
-      const result = await insert(tableName, obj);
-      const inserted = Array.isArray(result) ? result[0] : result;
-      data.push({ id: inserted[idColumn], values: rowValues });
-      console.log(`Inserted row`, inserted);
-      renderTable();
-    } catch (err) {
-      console.error('Failed to insert row:', err);
-    }
-  }
-}
+      // Declare handleInsert inside renderTable so it has access to tr and columns
+      async function handleInsert() {
+        const rowValues = Array.from(tr.children)
+          .slice(0, columns.length)
+          .map((td) => {
+            if (td.querySelector?.('select')) {
+              let val = td.querySelector('select').value;
+              if (val === '' || val === 'null') val = null;
+              return val;
+            }
+            let val = td.textContent.trim();
+            if (val === '' || val === 'null' || val === 'New') val = null;
+            return val;
+          });
 
+        // If no values entered, do nothing
+        if (!rowValues.some((v) => v !== null && v !== '')) return;
 
-
-    async function handleInsert() {
-      const rowValues = Array.from(tr.children)
-        .slice(0, columns.length)
-        .map((td) => {
-          if (td.querySelector?.('select')) return td.querySelector('select').value;
-          return td.textContent.trim();
+        const obj = { ...extraInsertFields };
+        columns.forEach((c, i) => {
+          let val = rowValues[i];
+          if (val === '') val = null;
+          if (val !== null && val !== undefined) obj[c] = val;
         });
 
-      if (!rowValues.some((v) => v !== '')) return;
-
-      const obj = { ...extraInsertFields };
-      columns.forEach((c, i) => {
-        const val = rowValues[i];
-        if (val !== '') obj[c] = val;
-      });
-
-      try {
-        const result = await insert(tableName, obj);
-        const inserted = Array.isArray(result) ? result[0] : result;
-        data.push({ id: inserted[idColumn], values: rowValues });
-        console.log(`Inserted row`, inserted);
-        renderTable();
-      } catch (err) {
-        console.error('Failed to insert row:', err);
+        try {
+          const result = await insert(tableName, obj);
+          const inserted = Array.isArray(result) ? result[0] : result;
+          data.push({ id: inserted[idColumn], values: rowValues });
+          console.log(`Inserted row`, inserted);
+          renderTable();
+        } catch (err) {
+          console.error('Failed to insert row:', err);
+        }
       }
     }
   }
-  
 
   renderTable();
 }
+
 export function updateDropdownOptions(columnName, newOptions) {
   const dropdownSelects = document.querySelectorAll(`[data-dropdown="${columnName}"]`);
   dropdownSelects.forEach(select => {

@@ -1,6 +1,15 @@
-import { insert } from "./db";
+import { insert } from "./db.js";
 
-export default function createBooking(name, recurring, recurrence, startDate, endDate, oId, uId, requirements, clientId){
-    await(insert("bookings", {name: name, recurring: recurring, recurrence: recurrence, startDate: startDate, endDate: endDate, oId:oId, uId: uId, requirements: requirements, clientId: clientId}))
-
+export default async function createBooking(name, recurring, recurrence, startDate, endDate, oId, uId, requirements, clientId) {
+  await insert("bookings", {
+    name,
+    recurring,
+    recurrence,
+    startDate,
+    endDate,
+    oId,
+    uId,
+    requirements,
+    clientId
+  });
 }

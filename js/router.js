@@ -7,7 +7,6 @@ import { bookableSpacesAfterRender, bookableSpacesHTML } from '../views/bookable
 import { updates } from '../views/updates.js';
 import bookingHTML, { bookingAfterRender } from '../views/bookingPage.js';
 import formBuilderPage, { loadFormBuilderPage } from '../views/createCustomForm.js';
-import { renderFormById } from '../views/viewCustomForm.js';
 import formsPage, { loadForms } from '../views/forms.js';
 import { loadSettings, settingsPage } from '../views/settings.js';
 import { subnav } from './subnav.js';
@@ -15,6 +14,7 @@ import { loadUsersPage, usersPageHtml } from '../views/usermanagement.js';
 import { orgSettings } from '../views/orgSettings.js';
 import { bookingWorflowHTML, loadBookingWorkflow } from '../views/bookingWorkflow.js';
 import { bookableEquipmentAfterRender, bookableEquipmentHTML } from '../views/bookableEquipment.js';
+import customFormHTML, { customFormAfterRender } from '../views/viewCustomForm.js';
 
 let currentUser = null;
 const formsSubNav = subnav([
@@ -33,8 +33,15 @@ const publicRoutes = {
   '/': renderHome,
   '/login': renderLogin,
   '/updates': updates,
-  '/form': renderFormById,
-};
+  '/form':  async () => {
+  const html = await customFormHTML();
+  setTimeout(() => customFormAfterRender(), 0); // Load data after render
+
+  return `
+    ${html}
+  `;
+  },
+    };
 
 const privateRoutes = {
   '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,

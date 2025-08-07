@@ -1,7 +1,26 @@
 import { select } from "../js/db.js";
 import { renderTablePage, updateDropdownOptions } from "../js/interacttable.js";
 import { showInsertPopup } from "../js/popup.js";
-import { subnav } from "../js/subnav.js";
+
+/**
+ * Validate room data before insert/update: ensure oRGroup is either valid or null.
+ */
+async function sanitizeRoomData(roomData, organisationId) {
+  if (roomData.oRGroup) {
+    const existingGroup = await select('orgRoomGroups', 'id', {
+      column: 'id',
+      operator: 'eq',
+      value: roomData.oRGroup,
+    });
+    if (!existingGroup || existingGroup.length === 0) {
+      roomData.oRGroup = null;
+    }
+  } else {
+    roomData.oRGroup = null;
+  }
+  roomData.oId = organisationId; // ensure org id is always set
+  return roomData;
+}
 
 export function bookableSpacesHTML() {
   return `
@@ -33,6 +52,7 @@ export async function bookableSpacesAfterRender(currentUser) {
     value: d.id,
     label: d.departmentName,
   }));
+
   const roomGroups = await select("orgRoomGroups", "*", {
     column: "oId",
     operator: "eq",
@@ -95,7 +115,8 @@ export async function bookableSpacesAfterRender(currentUser) {
             },
           });
         },
-      },oRGroup: {
+      },
+      oRGroup: {
         options: rgDrop,
         formId: "statusForm",
         allowCreate: true,
@@ -119,13 +140,28 @@ export async function bookableSpacesAfterRender(currentUser) {
                 label: r.groupName,
               }));
 
-              updateDropdownOptions("oDep", updatedDepDrop);
+              updateDropdownOptions("oRGroup", updatedDepDrop);
+
             },
           });
         },
       },
     },
+
+    /**
+     * Here, intercept before insert and update to sanitize the data.
+     * This assumes renderTablePage supports hooks like these.
+     * If not, you may need to modify renderTablePage or handle it separately.
+     */
+    beforeInsert: async (row) => {
+      return sanitizeRoomData(row, currentUser.organisationId);
+    },
+    beforeUpdate: async (row) => {
+      return sanitizeRoomData(row, currentUser.organisationId);
+    },
+
   });
+
   renderTablePage("departments", {
     tableLabel: "Departments",
     columns: ["departmentName"],
@@ -137,6 +173,7 @@ export async function bookableSpacesAfterRender(currentUser) {
       oId: currentUser.organisationId,
     },
   });
+
   renderTablePage("groups", {
     tableLabel: "Room Groups",
     columns: ["groupName"],
