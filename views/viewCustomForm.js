@@ -4,21 +4,20 @@ export default async function customFormHTML() {
   const query = location.hash.includes('?') ? location.hash.split('?')[1] : "";
   const urlParams = new URLSearchParams(query);
   const formId = urlParams.get("id");
-  const booking = urlParams.get("bid");
+  const booking = urlParams.get("bId");
 
   if (!formId || !booking) {
     return `<div><h1>Error 404: This form cannot be reached</h1></div>`;
   }
+console.log("formId:", formId, "bId:", booking);
 
-  const [existingResponse] = await select("formResponses", "*", {
-    column: "formId",
-    operator: "eq",
-    value: formId,
-  }, {
-    and: [
-      { column: "bId", operator: "eq", value: booking }
-    ]
-  });
+  const [existingResponse] = await select("formResponses", "*", [
+  { column: "formId", operator: "eq", value: formId },
+  { column: "bId", operator: "eq", value: booking }
+]);
+
+
+
 
   if (existingResponse) {
     return `<div><h1>A submission has already been received</h1><h2>If you believe this is incorrect please contact <a href="mailto:ben@bookingorchard.com">Support</a></h2></div>`;
