@@ -46,7 +46,7 @@ export async function loadBookings(currentUser) {
                 name: "days",
                 label: "Days of Week",
                 type: "checkboxGroup",
-                options: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                options: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
               }
             ]
           }

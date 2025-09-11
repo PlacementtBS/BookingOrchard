@@ -459,4 +459,203 @@ section .third {
 .activesubnav{
     background-color: #6ab18e;
     color:white;
+}/* ===== Calendar Styles ===== */
+
+.cal-headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cal-grid {
+  display: flex;
+  justify-content: center;
+}
+
+.cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+  max-width: 1000px;
+}
+
+.cal-header {
+  font-weight: bold;
+  text-align: center;
+  padding: 8px;
+  background: var(--surface-muted, #f0f0f0);
+  border-radius: 6px;
+}
+
+.cal-cell {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  min-height: 100px;
+  padding: 4px;
+  background: var(--surface, #fff);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.cal-cell.empty {
+  background: transparent;
+  border: none;
+}
+
+.cal-dayNumber {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-muted, #666);
+  margin-bottom: 4px;
+}
+
+.cal-eventList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-eventList li {
+  font-size: 0.8rem;
+  background: var(--primary-light, #eef6ff);
+  border-radius: 4px;
+  padding: 2px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-eventList li a {
+  text-decoration: none;
+  color: var(--primary-dark, #004080);
+}
+
+.cal-eventList li a:hover {
+  text-decoration: underline;
+}
+.rota-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  width: 100%;
+  max-height: 70vh;
+  border: 1px solid #ccc;
+  display: block;
+}
+
+.rota-weekGrid {
+  display: grid;
+  grid-auto-rows: 40px;
+  min-width: max-content;
+}
+
+.rota-row {
+  display: grid;
+  grid-template-columns: min-content repeat(96, 40px) min-content; /* 24h x 4 quarters + date + shifts */
+  position: relative;
+  grid-auto-rows: 25px;
+  gap: 1px;
+}
+
+
+.rota-cell {
+  border: 1px solid var(--BordersAndLines);
+  background: var(--White);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0 2px;
+  box-sizing: border-box;
+  font-size: 0.65rem;
+}
+
+.rota-dateCell {
+  background: var(--Background);
+  font-weight: bold;
+  text-align: left;
+  padding-left: 4px;
+  min-width: 120px;
+}
+
+.rota-slotCell {
+  position: relative;
+  min-width: 40px;
+  height: 25px;
+}
+
+.rota-booking-bar {
+  border: 1px dotted var(--Primary);
+  border-radius: 3px;
+  background: rgba(28,130,79,0.1);
+  font-size: 0.7rem;
+  color: var(--Primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2px;
+  bottom: 2px;
+}
+
+.rota-shiftsCell {
+  min-width: 150px;
+  background: #e8f5e9;
+  font-size: 0.75rem;
+  color: #2e7d32;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.rota-hourCell {
+  text-align: center;
+  font-weight: bold;
+  background: var(--Background);
+}
+
+.rota-quarterCell {
+  text-align: center;
+  background: var(--Background);
+}
+/* Keep top two rows and first column visible */
+.rota-weekGrid .rota-headerRow,
+.rota-weekGrid .rota-quarterRow {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.rota-weekGrid .rota-dateCell {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--Background);
+}
+#rotaTable th, #rotaTable td {
+  border-right: 1px dotted #ccc; /* default 15-min border */
+  border-bottom: 1px solid #ccc;
+  padding: 4px;
+  position: relative;
+}
+
+/* Solid border every full hour */
+
+/* Optional: make booking blocks have solid right edge for clarity */
+.booking-block {
+  border-right: 2px solid #000;
 }
