@@ -2,11 +2,8 @@ import { select } from "../js/db.js";
 export default function documentsPage() {
     
   return `
-    <section>
-
-    </section>
-    <section>
-      <div class="cardContainer" id="forms">
+    <section class="fullHeight">
+      <div class="cardGallery" id="forms">
         <p>Loading bookings...</p>
       </div>
     </section>
@@ -32,17 +29,36 @@ export async function loadDocuments(currentUser) {
     return;
   }
 
-  forms.forEach(f => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <div>
-        <h4>Name</h4>
-        <p>${f.name}</p>
-      </div>
-      <a href="#/document-builder?id=${f.id}"><button class="primaryButton">Edit</button></a>
-      <a href="#/document?id=${f.id}" target="_blank"><button class="outlineButton">View</button></a>
-    `;
-    container.appendChild(card);
+for (const f of forms) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  // ✅ Await user lookup
+
+  // ✅ Format date nicely
+  const createdDate = new Date(f.created_at).toLocaleDateString("en-GB", {
+    weekday: "short", // "Mon"
+    day: "2-digit",   // "25"
+    month: "short",   // "Sep"
+    year: "numeric"   // "2025"
   });
+
+  card.innerHTML = `
+    <div>
+      <h4>${f.name}</h4>
+      <a href="#/document-builder?id=${f.id}">
+      <button class="primaryButton">Edit</button>
+    </a>
+    <a href="#/document?id=${f.id}" target="_blank">
+      <button class="outlineButton">View</button>
+    </a>
+      <hr>
+      <p>Created</p>
+      <p>${createdDate}</p>
+    </div>
+    
+  `;
+
+  container.appendChild(card);
+}
 }

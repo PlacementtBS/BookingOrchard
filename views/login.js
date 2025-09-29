@@ -1,6 +1,7 @@
 // src/views/login.js
 
 import { login } from "../js/auth.js";
+import { sendEmail } from "../js/email.js";
 
 export default function renderLogin() {
   return `

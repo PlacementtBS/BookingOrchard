@@ -3,10 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <title>BookingOrchard SPA</title>
-  <link id="main-style" rel="stylesheet" href="css/public.css" />
+  <link  rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet">
+<script>
+  setInterval(() => {
+    const sysMsg = document.getElementById("systemMessages");
+    if (sysMsg) sysMsg.innerHTML = "";
+  }, 10000); // every 20 seconds
+</script>
+
+
+
 </head>
 <body>
   <main id="app"></main>
+    <div id="systemMessages"></div>
   <script type="module" src="js/router.js"></script>
 </body>
 </html>
