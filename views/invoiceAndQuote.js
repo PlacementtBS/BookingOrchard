@@ -1,4 +1,5 @@
-import { select, insert } from "../js/db.js";
+import { select, insert, update } from "../js/db.js";
+import { sendEmail } from "../js/email.js";
 
 export default function invoicePage() {
   return `
@@ -7,23 +8,25 @@ export default function invoicePage() {
         <h1>Invoice / Quote</h1>
         <div id="invoiceBookingInfo">Loading booking info...</div>
         <hr>
-        <h3>Quote Details</h3>
+        <h3>Quote / Invoice Details</h3>
         <div id="quoteDetails">Loading...</div>
         <div id="versionMenu" style="margin-top:1em;"></div>
         <button class="secondaryButton" id="addItemBtn">+ Add Item</button>
         <button class="primaryButton" id="saveQuoteBtn">Save New Version</button>
+        <button class="primaryButton" id="sendQuoteBtn">Send Quote</button>
+        <button class="primaryButton" id="sendAsInvoiceBtn">Send as Invoice</button>
+        <button class="dangerButton" id="removeInvoiceBtn" style="display:none;">Remove Invoice</button>
       </div>
     </section>
   `;
 }
 
 export async function loadInvoice(currentUser) {
-  const urlParams = new URLSearchParams(location.hash.split('?')[1]);
+  const urlParams = new URLSearchParams(location.hash.split("?")[1]);
   const bookingId = urlParams.get("bid");
   if (!bookingId) return;
 
-  // --- Fetch booking info ---
-  const booking = (await select("bookings", "*", { column: "id", operator: "eq", value: bookingId }))[0];
+  const [booking] = await select("bookings", "*", { column: "id", operator: "eq", value: bookingId });
   if (!booking) return;
 
   document.getElementById("invoiceBookingInfo").innerHTML = `
@@ -31,143 +34,126 @@ export async function loadInvoice(currentUser) {
     <p>${new Date(booking.startDate).toLocaleDateString("en-GB")} - ${new Date(booking.endDate).toLocaleDateString("en-GB")}</p>
   `;
 
-  // --- Calculate total hours from booking.timings ---
+  // Fetch existing invoices/quotes
+  let existing = await select("invoicesAndQuotes", "*", { column: "bId", operator: "eq", value: bookingId });
+  const hasInvoice = existing.some(r => r.type === true);
+  const latest = existing.length ? existing.reduce((a, b) => (a.version > b.version ? a : b)) : null;
+
+  // Load requirements form responses
+  let reqResponses = await select("requirementsFormResponses", "*", { column: "bId", operator: "eq", value: bookingId }) || [];
+  let latestReq = reqResponses.length
+    ? reqResponses.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+    : null;
+
+  let requirements = [];
+  try { requirements = latestReq ? JSON.parse(latestReq.response) : []; } catch { requirements = []; }
+
+  const allRooms = await select("rooms", "*");
+  const allEquipment = await select("equipment", "*");
+
+  // Calculate total hire hours
   let totalHours = 0;
-  if (booking.timings) {
-    for (const t of Object.values(booking.timings)) {
-      if (t.start && t.end) {
-        const [startH, startM] = t.start.split(":").map(Number);
-        const [endH, endM] = t.end.split(":").map(Number);
-        totalHours += (endH + endM / 60) - (startH + startM / 60);
-      }
+  try {
+    const timings = booking.timings ? JSON.parse(booking.timings) : {};
+    for (const day of Object.values(timings)) {
+      const [sH, sM] = day.start.split(":").map(Number);
+      const [eH, eM] = day.end.split(":").map(Number);
+      totalHours += ((eH * 60 + eM) - (sH * 60 + sM)) / 60;
     }
-  }
+    totalHours = Math.round(totalHours * 100) / 100;
+  } catch { totalHours = 0; }
 
-  // --- Fetch requirements responses ---
-  const responses = await select("requirementsFormResponses", "*", { column: "bId", operator: "eq", value: bookingId });
-  if (!responses.length) {
-    document.getElementById("quoteDetails").innerHTML = "<p>No responses available to generate quote.</p>";
-    return;
-  }
-
-  let responseData = responses[0].response;
-  if (typeof responseData === "string") {
-    try { responseData = JSON.parse(responseData); } catch { responseData = []; }
-  }
-
-  let generatedItems = [];
-
-  for (const r of responseData) {
-    // --- Rooms ---
-    if (r.response && r.roomId) {
-      const room = (await select("rooms", "*", { column: "id", operator: "eq", value: r.roomId }))[0];
-      if (room) {
-        generatedItems.push({
-          item: room.room,
-          description: "Room Booking",
-          quantity: totalHours || 1,
-          price: Number(room.cost) || 0,
+  // Build initial items from requirements
+  let initialItems = [];
+  for (const req of requirements) {
+    if (req.response) {
+      const room = allRooms.find(r => r.id === req.roomId);
+      if (room) initialItems.push({
+        item: room.room,
+        description: `Hire for ${totalHours} hours`,
+        quantity: totalHours,
+        price: parseFloat(room.cost || 0),
+        tax: 0
+      });
+    }
+    for (const eqResp of req.equipment || []) {
+      if (eqResp.response) {
+        const eq = allEquipment.find(e => e.id === eqResp.equipmentId);
+        if (eq) initialItems.push({
+          item: eq.name,
+          description: `Hire for ${totalHours} hours`,
+          quantity: totalHours,
+          price: parseFloat(eq.cost || 0),
           tax: 0
         });
       }
     }
-
-    // --- Equipment ---
-    if (Array.isArray(r.equipment)) {
-      for (const eq of r.equipment) {
-        if (eq.response) {
-          const equipment = (await select("equipment", "*", { column: "id", operator: "eq", value: eq.equipmentId }))[0];
-          if (equipment) {
-            generatedItems.push({
-              item: equipment.name,
-              description: "Equipment",
-              quantity: totalHours || 1,
-              price: Number(equipment.cost) || 0,
-              tax: 0
-            });
-          }
-        }
-      }
-    }
   }
 
-  // --- Load existing versions ---
-  const existing = await select("invoicesAndQuotes", "*", { column: "bId", operator: "eq", value: bookingId });
-  const filtered = existing.filter(r => r.type === false); // false = quote
-  const latest = filtered.length ? filtered.reduce((a, b) => (a.version > b.version ? a : b)) : null;
-
-  // --- Editable Table Renderer ---
-  function renderQuoteEditor(items) {
+  // --- QUOTE TABLE RENDERING ---
+  function renderQuoteEditor(items, readOnly = false) {
     let html = `<table class="static" style="width:100%; border-collapse:collapse;" id="quoteTable">
       <tr style="background:#f0f0f0;">
-        <th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Tax</th><th>Total</th><th></th>
+        <th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Tax</th><th>Total</th>${readOnly ? "" : "<th></th>"}
       </tr>`;
 
     items.forEach((q, idx) => {
       html += `<tr>
-        <td contenteditable="true" data-field="item">${q.item || ""}</td>
-        <td contenteditable="true" data-field="description">${q.description || ""}</td>
-        <td contenteditable="true" data-field="quantity">${q.quantity || 1}</td>
-        <td contenteditable="true" data-field="price">${q.price || 0}</td>
+        <td ${!readOnly ? 'contenteditable="true"' : ""} data-field="item">${q.item || ""}</td>
+        <td ${!readOnly ? 'contenteditable="true"' : ""} data-field="description">${q.description || ""}</td>
+        <td ${!readOnly ? 'contenteditable="true"' : ""} data-field="quantity">${q.quantity || 1}</td>
+        <td ${!readOnly ? 'contenteditable="true"' : ""} data-field="price">${q.price || 0}</td>
         <td>
-          <select data-field="tax" data-index="${idx}">
-            <option value="0" ${q.tax == 0 ? "selected" : ""}>No Tax</option>
-            <option value="0.05" ${q.tax == 0.05 ? "selected" : ""}>5%</option>
-            <option value="0.20" ${q.tax == 0.20 ? "selected" : ""}>20%</option>
-          </select>
+          ${readOnly ? (q.tax ? (q.tax*100)+"%" : "No Tax") : `<select data-field="tax" data-index="${idx}">
+            <option value="0" ${q.tax==0?"selected":""}>No Tax</option>
+            <option value="0.05" ${q.tax==0.05?"selected":""}>5%</option>
+            <option value="0.20" ${q.tax==0.20?"selected":""}>20%</option>
+          </select>`}
         </td>
         <td class="lineTotal">£0.00</td>
-        <td><button class="deleteRowBtn" data-index="${idx}">❌</button></td>
+        ${!readOnly ? `<td><button class="deleteRowBtn" data-index="${idx}">❌</button></td>` : "" }
       </tr>`;
     });
 
     html += `<tr style="font-weight:bold;">
       <td colspan="5" style="text-align:right">Total:</td>
       <td id="grandTotal">£0.00</td>
-      <td></td>
-    </tr>`;
-    html += `</table>`;
+      ${!readOnly ? "<td></td>" : "" }
+    </tr></table>`;
 
     document.getElementById("quoteDetails").innerHTML = html;
     recalcTotals();
-    attachRowEvents();
+    if(!readOnly) attachRowEvents();
   }
 
-  // --- Helpers ---
   function recalcTotals() {
     const rows = document.querySelectorAll("#quoteTable tr");
     let grandTotal = 0;
-    rows.forEach((row, idx) => {
+    rows.forEach(row => {
       const qtyCell = row.querySelector('[data-field="quantity"]');
       const priceCell = row.querySelector('[data-field="price"]');
       const taxSel = row.querySelector('[data-field="tax"]');
       const totalCell = row.querySelector(".lineTotal");
-      if (qtyCell && priceCell && taxSel && totalCell) {
+      if(qtyCell && priceCell && totalCell){
         const qty = parseFloat(qtyCell.textContent) || 0;
         const price = parseFloat(priceCell.textContent) || 0;
-        const taxRate = parseFloat(taxSel.value) || 0;
-        const base = qty * price;
-        const lineTotal = base + (base * taxRate);
+        const taxRate = taxSel ? parseFloat(taxSel.value) || 0 : 0;
+        const lineTotal = qty * price * (1 + taxRate);
         totalCell.textContent = `£${lineTotal.toFixed(2)}`;
         grandTotal += lineTotal;
       }
     });
     const gTotal = document.getElementById("grandTotal");
-    if (gTotal) gTotal.textContent = `£${grandTotal.toFixed(2)}`;
+    if(gTotal) gTotal.textContent = `£${grandTotal.toFixed(2)}`;
   }
 
   function attachRowEvents() {
-    document.querySelectorAll("#quoteTable td[contenteditable]").forEach(cell => {
-      cell.addEventListener("input", recalcTotals);
-    });
-    document.querySelectorAll("#quoteTable select[data-field='tax']").forEach(sel => {
-      sel.addEventListener("change", recalcTotals);
-    });
+    document.querySelectorAll("#quoteTable td[contenteditable]").forEach(cell => cell.addEventListener("input", recalcTotals));
+    document.querySelectorAll("#quoteTable select[data-field='tax']").forEach(sel => sel.addEventListener("change", recalcTotals));
     document.querySelectorAll(".deleteRowBtn").forEach(btn => {
       btn.addEventListener("click", () => {
-        const idx = parseInt(btn.getAttribute("data-index"));
-        let items = getCurrentItems();
-        items.splice(idx, 1);
+        const items = getCurrentItems();
+        items.splice(parseInt(btn.dataset.index), 1);
         renderQuoteEditor(items);
       });
     });
@@ -182,82 +168,113 @@ export async function loadInvoice(currentUser) {
       const qty = row.querySelector('[data-field="quantity"]');
       const price = row.querySelector('[data-field="price"]');
       const taxSel = row.querySelector('[data-field="tax"]');
-      if (item && desc && qty && price && taxSel) {
+      if(item && desc && qty && price){
         items.push({
           item: item.textContent.trim(),
           description: desc.textContent.trim(),
           quantity: parseFloat(qty.textContent) || 0,
           price: parseFloat(price.textContent) || 0,
-          tax: parseFloat(taxSel.value) || 0
+          tax: taxSel ? parseFloat(taxSel.value) || 0 : 0
         });
       }
     });
     return items;
   }
 
-  // --- If no versions exist, auto-save generated items as v1 ---
-  if (!filtered.length && generatedItems.length) {
-    const newEntry = {
-      bId: bookingId,
-      version: 1,
-      createdBy: currentUser.id,
-      schema: JSON.stringify(generatedItems),
-      type: false
-    };
-    await insert("invoicesAndQuotes", newEntry);
-    return loadInvoice(currentUser); // reload so editor loads v1
-  }
-
-  // --- Render version menu ---
-  const versionMenu = document.getElementById("versionMenu");
-  versionMenu.innerHTML = "";
-  if (filtered.length > 0) {
-    filtered.sort((a, b) => b.version - a.version);
-    filtered.forEach(r => {
-      const btn = document.createElement("button");
-      btn.textContent = `Version ${r.version} (${new Date(r.created_at).toLocaleString()})`;
-      btn.onclick = () => {
-        let schema = r.schema;
-        if (typeof schema === "string") {
-          try { schema = JSON.parse(schema); } catch { schema = []; }
-        }
-        renderQuoteEditor(schema);
-      };
-      versionMenu.appendChild(btn);
-    });
-
-    // Show latest version by default
-    if (latest) {
-      let schema = latest.schema;
-      if (typeof schema === "string") {
-        try { schema = JSON.parse(schema); } catch { schema = []; }
-      }
-      renderQuoteEditor(schema);
+  // --- INITIAL RENDER ---
+  let itemsToRender = [];
+  if (latest?.schema) {
+    try {
+      const parsed = JSON.parse(latest.schema);
+      itemsToRender = Array.isArray(parsed) && parsed.length ? parsed : initialItems;
+    } catch {
+      itemsToRender = initialItems;
     }
+  } else {
+    itemsToRender = initialItems;
   }
 
-  // --- Add item button ---
-  document.getElementById("addItemBtn").onclick = () => {
-    let items = getCurrentItems();
+  renderQuoteEditor(itemsToRender, hasInvoice);
+
+  // Show/hide remove invoice button
+  const removeInvoiceBtn = document.getElementById("removeInvoiceBtn");
+  removeInvoiceBtn.style.display = hasInvoice ? "inline-block" : "none";
+
+  // --- BUTTON HOOKS ---
+  const addItemBtn = document.getElementById("addItemBtn");
+  const saveQuoteBtn = document.getElementById("saveQuoteBtn");
+  const sendQuoteBtn = document.getElementById("sendQuoteBtn");
+  const sendAsInvoiceBtn = document.getElementById("sendAsInvoiceBtn");
+
+  addItemBtn.onclick = () => {
+    const items = getCurrentItems();
     items.push({ item: "New Item", description: "", quantity: 1, price: 0, tax: 0 });
     renderQuoteEditor(items);
   };
 
-  // --- Save new version ---
-  document.getElementById("saveQuoteBtn").onclick = async () => {
+  async function saveOrSendQuote(isInvoice = false, stageName = "Quote") {
     const items = getCurrentItems();
-    const maxVersion = filtered.length ? Math.max(...filtered.map(r => r.version || 0)) : 0;
 
-    const newEntry = {
+    // Reload existing to ensure correct version
+    existing = await select("invoicesAndQuotes", "*", { column: "bId", operator: "eq", value: bookingId });
+    const version = existing.length ? Math.max(...existing.map(r => r.version || 0)) + 1 : 1;
+
+    const recordId = crypto.randomUUID();
+    await insert("invoicesAndQuotes", {
+      id: recordId,
       bId: bookingId,
-      version: maxVersion + 1,
-      createdBy: currentUser.id,
+      version,
+      createdBy: currentUser?.id || null,
       schema: JSON.stringify(items),
-      type: false // false = quote
-    };
+      type: isInvoice
+    });
 
-    await insert("invoicesAndQuotes", newEntry);
-    alert(`Quote version ${newEntry.version} saved successfully!`);
-    loadInvoice(currentUser); // reload to refresh menu
+    // Lookup workflow stage ID for this org + action
+    const workflowStages = await select("bookingWorkflows", "*", {
+      column: "oId",
+      operator: "eq",
+      value: booking.oId
+    });
+    const stage = workflowStages.find(s => s.actionType === stageName);
+    if (stage) {
+      await insert("bookingWorkflowCompletion", {
+        id: crypto.randomUUID(),
+        bookingId,
+        stageId: stage.id,   // ✅ use stageId, not name
+        completedAt: new Date().toISOString(),
+        completedby: currentUser?.id || null
+      });
+    }
+
+    // Send email to client
+    const [client] = await select("clients", "*", { column:"id", operator:"eq", value:booking.clientId });
+    if(client?.email){
+      const html = `
+        <h2>${stageName} for ${booking.name}</h2>
+        ${items.map(i=>`<p><strong>${i.item}</strong> (${i.quantity}x) - £${(i.price*(1+i.tax)).toFixed(2)}</p>`).join("")}
+        <p><strong>Total:</strong> £${items.reduce((sum,i)=>sum+i.quantity*i.price*(1+i.tax),0).toFixed(2)}</p>
+      `;
+      await sendEmail({
+        to: client.email,
+        subject: `${stageName} for ${booking.name}`,
+        message: html,
+        forename: client.forename,
+        surname: client.surname
+      });
+    }
+
+    alert(`${stageName} saved and ${isInvoice ? "invoice" : "quote"} sent!`);
+    loadInvoice(currentUser);
+  }
+
+  saveQuoteBtn.onclick = () => saveOrSendQuote(false, "Quote");
+  sendQuoteBtn.onclick = () => saveOrSendQuote(false, "Quote");
+  sendAsInvoiceBtn.onclick = () => saveOrSendQuote(true, "Invoice");
+
+  removeInvoiceBtn.onclick = async () => {
+    if(!latest?.type) return;
+    await update("invoicesAndQuotes", { type:false }, { column:"id", operator:"eq", value:latest.id });
+    alert(`Invoice reverted back to quote.`);
+    loadInvoice(currentUser);
   };
 }

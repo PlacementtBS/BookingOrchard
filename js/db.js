@@ -1,13 +1,5 @@
 // db.js
-
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-// Initialize Supabase client
-const SUPABASE_URL = 'https://jkvthdkqqckhipdlnpuk.supabase.co';
-const SUPABASE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprdnRoZGtxcWNraGlwZGxucHVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MTU2NTQsImV4cCI6MjA2NzQ5MTY1NH0.jQHWBy-jKpocqiRcgb3caYicjJPa-3tCpWkVdK7Y3Wg';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { supabase } from './supabaseUpload.js';
 
 /**
  * Insert data into a table

@@ -4,15 +4,55 @@ export default function formBuilderPage() {
   const urlParams = new URLSearchParams(location.hash.split('?')[1]);
   const id = urlParams.get("id");
   return `
-    <section>
-      
-        <div id="formBuilderContainer"></div>
-        <div id="formBuilderPreview"></div>
+    <section class="fullHeight">
+      <div id="formBuilderContainer"></div>
+      <div id="formBuilderPreview"></div>
     </section>
   `;
 }
 
 export async function loadFormBuilderPage(currentUser) {
+
+  /**
+   * Make a rating input interactive (connects number input + clickable stars).
+   * containerEl is the container DOM element that contains .starRow and .ratingNumber
+   */
+  function makeInteractiveRating(containerEl, max = 5) {
+    const starRow = containerEl.querySelector('.starRow');
+    const numberInput = containerEl.querySelector('.ratingNumber');
+
+    function draw(value) {
+      starRow.innerHTML = '';
+      const val = Math.max(0, Math.min(max, Number(value) || 0));
+      for (let i = 1; i <= max; i++) {
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'starBtn';
+        star.dataset.value = i;
+        star.setAttribute('aria-label', `Set rating to ${i}`);
+        if (i <= Math.floor(val)) {
+          star.innerHTML = '★';
+          star.classList.add('filled');
+        } else if (i === Math.floor(val) + 1 && val % 1 >= 0.5) {
+          star.innerHTML = '⯨';
+          star.classList.add('half');
+        } else {
+          star.innerHTML = '☆';
+        }
+        star.addEventListener('click', () => {
+          const clickedValue = Number(star.dataset.value);
+          numberInput.value = clickedValue;
+          draw(clickedValue);
+        });
+        starRow.appendChild(star);
+      }
+    }
+
+    // sync from number input
+    numberInput.addEventListener('input', () => draw(numberInput.value));
+    draw(numberInput.value);
+  }
+
   const query = location.hash.includes('?') ? location.hash.split('?')[1] : "";
   const urlParams = new URLSearchParams(query);
   const formId = urlParams.get("id");
@@ -90,98 +130,99 @@ export async function loadFormBuilderPage(currentUser) {
 
     const modifiableTypes = ["dropdown", "checkbox", "rating"];
 
-const renderSchema = () => {
-  fieldsContainer.innerHTML = "";
-  container2.innerHTML = "";
+    const renderSchema = () => {
+      fieldsContainer.innerHTML = "";
+      container2.innerHTML = "";
 
-  schema.forEach((field, index) => {
-    if (!field.modifiers) field.modifiers = {};
+      schema.forEach((field, index) => {
+        if (!field.modifiers) field.modifiers = {};
 
-    // LEFT SIDE — create a grouped block for the editable field
-    const fieldDiv = document.createElement("section");
-    fieldDiv.style.marginBottom = "5px";
-    fieldDiv.style.display = `flex`;
-    fieldDiv.innerHTML = `
-      
-        <div><label>Field Name:</label><br>
-      <input type="text" value="${field.name}" data-index="${index}" class="field-name" placeholder="Name (used in answers)" /><br/><br/>
-      </div>
+        // LEFT SIDE — create a grouped block for the editable field
+        const fieldDiv = document.createElement("section");
+        fieldDiv.className = `formFieldRow`
+        fieldDiv.innerHTML = `
+          <section>
+            <div><label>${index+1}</label>
+            <input type="text" value="${field.name}" data-index="${index}" class="field-name" placeholder="Name (used in answers)" />
+            </div>
+          </section>
+          <div><label>Field Type:</label><br/>
+          <select data-index="${index}" class="field-type">
+            <option value="text" ${field.type === "text" ? "selected" : ""}>Text</option>
+            <option value="number" ${field.type === "number" ? "selected" : ""}>Number</option>
+            <option value="checkbox" ${field.type === "checkbox" ? "selected" : ""}>Checkbox</option>
+            <option value="dropdown" ${field.type === "dropdown" ? "selected" : ""}>Dropdown</option>
+            <option value="rating" ${field.type === "rating" ? "selected" : ""}>Rating</option>
+          </select><br/><br/></div>
+        `;
 
-      <div><label>Field Type:</label><br/>
-      <select data-index="${index}" class="field-type">
-        <option value="text" ${field.type === "text" ? "selected" : ""}>Text</option>
-        <option value="number" ${field.type === "number" ? "selected" : ""}>Number</option>
-        <option value="checkbox" ${field.type === "checkbox" ? "selected" : ""}>Checkbox</option>
-        <option value="dropdown" ${field.type === "dropdown" ? "selected" : ""}>Dropdown</option>
-        <option value="rating" ${field.type === "rating" ? "selected" : ""}>Rating</option>
-      </select><br/><br/></div>
-    `;
+        if (modifiableTypes.includes(field.type)) {
+          fieldDiv.innerHTML += renderModifiers(field, index);
+        }
 
-    if (modifiableTypes.includes(field.type)) {
-      fieldDiv.innerHTML += renderModifiers(field, index);
-    }
+        fieldDiv.innerHTML += `<br/><button class="deleteMarker" data-index="${index}" data-action="remove">🗑</button>`;
 
-    fieldDiv.innerHTML += `<br/><button class="primaryButton" data-index="${index}" data-action="remove">Remove</button>`;
+        fieldsContainer.appendChild(fieldDiv);
 
-    fieldsContainer.appendChild(fieldDiv);
+        // RIGHT SIDE — preview
+        const rightDiv = document.createElement("div");
+        rightDiv.style.marginBottom = "15px";
+        rightDiv.innerHTML = `${renderPreview(field)}`;
+        container2.appendChild(rightDiv);
+      });
 
-    // RIGHT SIDE — preview
-    const rightDiv = document.createElement("div");
-    rightDiv.style.marginBottom = "15px";
-    rightDiv.innerHTML = `${renderPreview(field)}`;
-    container2.appendChild(rightDiv);
-  });
+      // Make rating previews interactive
+      container2.querySelectorAll('.ratingInput').forEach(el => makeInteractiveRating(el, Number(el.querySelector('.ratingNumber').max) || 5));
 
-  // Set up all listeners
-  fieldsContainer.querySelectorAll(".field-name").forEach(input => {
-    input.addEventListener("input", async (e) => {
-      const i = +e.target.dataset.index;
-      schema[i].name = e.target.value;
-      await persistSchema();
-    });
-  });
+      // Set up all listeners
+      fieldsContainer.querySelectorAll(".field-name").forEach(input => {
+        input.addEventListener("input", async (e) => {
+          const i = +e.target.dataset.index;
+          schema[i].name = e.target.value;
+          await persistSchema();
+        });
+      });
 
-  fieldsContainer.querySelectorAll(".field-type").forEach(select => {
-    select.addEventListener("change", async (e) => {
-      const i = +e.target.dataset.index;
-      schema[i].type = e.target.value;
-      if (!modifiableTypes.includes(schema[i].type)) {
-        schema[i].modifiers = {};
-      } else if (!schema[i].modifiers) {
-        schema[i].modifiers = {};
-      }
-      await persistSchema();
-      renderSchema();
-    });
-  });
+      fieldsContainer.querySelectorAll(".field-type").forEach(select => {
+        select.addEventListener("change", async (e) => {
+          const i = +e.target.dataset.index;
+          schema[i].type = e.target.value;
+          if (!modifiableTypes.includes(schema[i].type)) {
+            schema[i].modifiers = {};
+          } else if (!schema[i].modifiers) {
+            schema[i].modifiers = {};
+          }
+          await persistSchema();
+          renderSchema();
+        });
+      });
 
-  fieldsContainer.querySelectorAll("[data-action='remove']").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const i = +e.target.dataset.index;
-      schema.splice(i, 1);
-      await persistSchema();
-      renderSchema();
-    });
-  });
+      fieldsContainer.querySelectorAll("[data-action='remove']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const i = +e.target.dataset.index;
+          schema.splice(i, 1);
+          await persistSchema();
+          renderSchema();
+        });
+      });
 
-  fieldsContainer.querySelectorAll(".modifier-input").forEach(input => {
-    input.addEventListener("input", async (e) => {
-      const i = +e.target.dataset.index;
-      const modKey = e.target.dataset.modkey;
-      const val = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+      fieldsContainer.querySelectorAll(".modifier-input").forEach(input => {
+        input.addEventListener("input", async (e) => {
+          const i = +e.target.dataset.index;
+          const modKey = e.target.dataset.modkey;
+          const val = e.target.type === "checkbox" ? e.target.checked : e.target.value;
 
-      if (modKey === "options") {
-        schema[i].modifiers.options = val.split(",").map(opt => opt.trim()).filter(Boolean);
-      } else if (modKey === "maxRating") {
-        schema[i].modifiers.maxRating = Math.max(1, parseInt(val) || 5);
-      } else if (modKey === "checkboxLabel") {
-        schema[i].modifiers.checkboxLabel = val;
-      }
-      await persistSchema();
-    });
-  });
-};
-
+          if (modKey === "options") {
+            schema[i].modifiers.options = val.split(",").map(opt => opt.trim()).filter(Boolean);
+          } else if (modKey === "maxRating") {
+            schema[i].modifiers.maxRating = Math.max(1, parseInt(val) || 5);
+          } else if (modKey === "checkboxLabel") {
+            schema[i].modifiers.checkboxLabel = val;
+          }
+          await persistSchema();
+        });
+      });
+    };
 
     function renderModifiers(field, index) {
       switch (field.type) {
@@ -193,15 +234,15 @@ const renderSchema = () => {
           </div>`;
         case "rating":
           return `
-          <div>
-            <label>Max Rating (1-10):</label><br/>
-            <input type="number" min="1" max="10" class="modifier-input" data-index="${index}" data-modkey="maxRating" value="${field.modifiers.maxRating || 5}" /></div>
-          `;
+          <div class="ratingInput">
+            <div class="starRow"></div>
+            <input type="number" min="1" max="10" class="modifier-input ratingNumber" data-index="${index}" data-modkey="maxRating" value="${field.modifiers.maxRating || 5}" />
+          </div>`;
         case "checkbox":
           return `<div>
             <label>Checkbox Label:</label><br/>
-            <input type="text" class="modifier-input" data-index="${index}" data-modkey="checkboxLabel" value="${field.modifiers.checkboxLabel || field.name}" /></div>
-          `;
+            <input type="text" class="modifier-input" data-index="${index}" data-modkey="checkboxLabel" value="${field.modifiers.checkboxLabel || field.name}" />
+          </div>`;
         default:
           return "";
       }
@@ -213,32 +254,21 @@ const renderSchema = () => {
         case "text":
           return `<label for="${name}">${field.name}</label><br><input type="text" id="${name}" placeholder="${name}" />`;
         case "number":
-          return `<label for="${name}">${field.name}</label><br><input type="number"  id="${name}" placeholder="${name}" />`;
+          return `<label for="${name}">${field.name}</label><br><input type="number" id="${name}" placeholder="${name}" />`;
         case "checkbox":
-          return `
-            <label>
-              <input type="checkbox"  />
-              ${field.modifiers.checkboxLabel || name}
-            </label>
-          `;
+          return `<label><input type="checkbox" />${field.modifiers.checkboxLabel || name}</label>`;
         case "dropdown":
           const opts = (field.modifiers.options || []).map(opt => `<option>${opt}</option>`).join("");
-          return `
-          <label for="${name}">${field.name}</label><br>
-            <select id="${name}">
-              <option value="">Select...</option>
-              ${opts}
-            </select>
-          `;
+          return `<label for="${name}">${field.name}</label><br><select id="${name}"><option value="">Select...</option>${opts}</select>`;
         case "rating":
           const max = field.modifiers.maxRating || 5;
-          return `
-          <label for="${name}">${field.name}</label><br>
-            <input type="number" id="${name}"  min="1" max="${max}" value="${Math.ceil(max / 2)}" />
-            <small>(1 to ${max} stars)</small>
-          `;
+          return `<label for="${name}">${field.name}</label><br>
+            <div class="ratingInput" id="preview-${name}">
+              <div class="starRow"></div>
+              <input type="number" class="ratingNumber" value="${Math.ceil(max/2)}" min="1" max="${max}" style="display:none;" />
+            </div>`;
         default:
-          return `<input type="text"  placeholder="${name}" />`;
+          return `<input type="text" placeholder="${name}" />`;
       }
     }
 

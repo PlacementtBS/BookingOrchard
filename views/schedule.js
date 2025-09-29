@@ -45,10 +45,12 @@ export async function loadRota(currentUser) {
   };
 
   async function renderWeek() {
-    const bookings = await select("bookings", "*", { column: "oId", operator: "eq", value: currentUser.organisationId });
-    const rotaRoles = await select("rotaRoles", "*", { column: "oId", operator: "eq", value: currentUser.organisationId });
-    const assignments = await select("rotaAssignments", "*", { column: "weekStart", operator: "eq", value: ymdLocal(weekStart) });
-    const users = await select("users", "*", { column: "organisationId", operator: "eq", value: currentUser.organisationId });
+    rotaTable.innerHTML = "";
+
+    const bookings = await select("bookings", "*", { column: "oId", operator: "eq", value: currentUser.organisationId }) || [];
+    const rotaRoles = await select("rotaRoles", "*", { column: "oId", operator: "eq", value: currentUser.organisationId }) || [];
+    const assignments = await select("rotaAssignments", "*", { column: "weekStart", operator: "eq", value: ymdLocal(weekStart) }) || [];
+    const users = await select("users", "*", { column: "organisationId", operator: "eq", value: currentUser.organisationId }) || [];
 
     const days = Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(weekStart);
@@ -57,78 +59,96 @@ export async function loadRota(currentUser) {
     });
 
     const daySegments = new Map(days.map(d => [ymdLocal(d), []]));
+
+    // --- Process bookings ---
     for (const booking of bookings) {
-      if (!booking.timings) continue;
-      for (const [bDate, t] of Object.entries(booking.timings)) {
-        if (!daySegments.has(bDate)) continue;
-        if (!t?.start || !t?.end) continue;
-        const [sh, sm] = t.start.split(":").map(Number);
-        const [eh, em] = t.end.split(":").map(Number);
-        daySegments.get(bDate).push({
-          id: booking.id,
-          name: booking.name,
-          startSlot: sh * slotsPerHour + sm / 15,
-          endSlot: eh * slotsPerHour + em / 15
-        });
+      let recurrence = {};
+      try { recurrence = typeof booking.recurrence === "string" ? JSON.parse(booking.recurrence) : booking.recurrence || {}; } catch {}
+      let timings = {};
+      try { timings = typeof booking.timings === "string" ? JSON.parse(booking.timings) : booking.timings || {}; } catch {}
+
+      if (recurrence.basis === "SingleDates" && Array.isArray(recurrence.dates)) {
+        for (const d of recurrence.dates) {
+          if (!daySegments.has(d)) continue;
+          const t = timings[d];
+          if (!t?.start || !t?.end) continue;
+          const [sh, sm] = t.start.split(":").map(Number);
+          const [eh, em] = t.end.split(":").map(Number);
+          daySegments.get(d).push({ id: booking.id, name: booking.name, startSlot: sh*slotsPerHour + (sm/60)*slotsPerHour, endSlot: eh*slotsPerHour + (em/60)*slotsPerHour });
+        }
+      } else if (recurrence.basis === "Weekly") {
+        const until = recurrence.until ? new Date(recurrence.until) : null;
+        for (const day of days) {
+          const dayKey = ymdLocal(day);
+          if (!daySegments.has(dayKey)) continue;
+          if (until && day > until) continue;
+          const dow = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][day.getDay()];
+          if (!recurrence.days?.includes(dow)) continue;
+          const t = timings[dayKey] || { start: "09:00", end: "17:00" };
+          const [sh, sm] = t.start.split(":").map(Number);
+          const [eh, em] = t.end.split(":").map(Number);
+          daySegments.get(dayKey).push({ id: booking.id, name: booking.name, startSlot: sh*slotsPerHour + (sm/60)*slotsPerHour, endSlot: eh*slotsPerHour + (em/60)*slotsPerHour });
+        }
+      } else {
+        const start = new Date(booking.startDate);
+        const end = new Date(booking.endDate);
+        for (const day of days) {
+          const dayKey = ymdLocal(day);
+          if (!daySegments.has(dayKey)) continue;
+          if (day < start || day > end) continue;
+          const t = timings[dayKey];
+          if (!t?.start || !t?.end) continue;
+          const [sh, sm] = t.start.split(":").map(Number);
+          const [eh, em] = t.end.split(":").map(Number);
+          daySegments.get(dayKey).push({ id: booking.id, name: booking.name, startSlot: sh*slotsPerHour + (sm/60)*slotsPerHour, endSlot: eh*slotsPerHour + (em/60)*slotsPerHour });
+        }
       }
     }
 
-    const dayShifts = new Map(days.map(d => [ymdLocal(d), []]));
-    for (const shift of assignments) {
-      if (!dayShifts.has(shift.date)) continue;
-      dayShifts.get(shift.date).push(shift);
-    }
-
-    rotaTable.innerHTML = "";
-
-    // --- header rows ---
+    // --- HEADER ROWS ---
     const headerRow = document.createElement("tr");
     headerRow.innerHTML = `<th style="min-width:200px"></th>`;
     for (let h = currentBlockStart; h < currentBlockStart + hoursVisible; h++) {
-      headerRow.innerHTML += `<th colspan="${slotsPerHour}">${String(h).padStart(2, "0")}:00</th>`;
+      headerRow.innerHTML += `<th colspan="${slotsPerHour}">${String(h).padStart(2,"0")}:00</th>`;
     }
     rotaTable.appendChild(headerRow);
 
     const subHeaderRow = document.createElement("tr");
     subHeaderRow.innerHTML = `<th></th>`;
     for (let h = currentBlockStart; h < currentBlockStart + hoursVisible; h++) {
-      for (let s = 0; s < slotsPerHour; s++) subHeaderRow.innerHTML += `<th>${String(s * 15).padStart(2, "0")}</th>`;
+      for (let s = 0; s < slotsPerHour; s++) subHeaderRow.innerHTML += `<th>${String(s*15).padStart(2,"0")}</th>`;
     }
     rotaTable.appendChild(subHeaderRow);
 
+    // --- DAYS + BOOKINGS + SHIFTS + Add Shift row ---
     for (const day of days) {
       const dateKey = ymdLocal(day);
 
-      // date row
-      const dateRow = document.createElement("tr");
-      dateRow.innerHTML = `<th>${day.toDateString()}</th>`;
-      for (let h = currentBlockStart; h < currentBlockStart + hoursVisible; h++) {
-        for (let s = 0; s < slotsPerHour; s++) dateRow.innerHTML += `<td></td>`;
-      }
-      rotaTable.appendChild(dateRow);
-
+      // booking row
+      const bookingRow = document.createElement("tr");
+      bookingRow.innerHTML = `<th>${day.toDateString()}</th>`;
       const blockStartSlot = currentBlockStart * slotsPerHour;
       const blockEndSlot = (currentBlockStart + hoursVisible) * slotsPerHour;
+      const emptyCells = Array(blockEndSlot - blockStartSlot).fill(null);
 
-      // bookings
-      (daySegments.get(dateKey) || []).forEach(seg => {
+      for (const seg of daySegments.get(dateKey) || []) {
         let renderStart = Math.max(seg.startSlot, blockStartSlot);
         let renderEnd = Math.min(seg.endSlot, blockEndSlot);
-        if (renderEnd <= blockStartSlot || renderStart >= blockEndSlot) return;
+        if (renderEnd <= blockStartSlot || renderStart >= blockEndSlot) continue;
+        emptyCells[Math.floor(renderStart - blockStartSlot)] = { name: seg.name, colspan: Math.ceil(renderEnd - renderStart) };
+        for (let i = Math.floor(renderStart - blockStartSlot) + 1; i < Math.ceil(renderEnd - blockStartSlot); i++) emptyCells[i] = "merged";
+      }
 
-        const bookingRow = document.createElement("tr");
-        bookingRow.innerHTML = `<td></td>`;
-        for (let i = blockStartSlot; i < blockEndSlot; i++) {
-          if (i === renderStart) {
-            bookingRow.innerHTML += `<td colspan="${renderEnd - renderStart}" class="booking-block" style="background:#90caf9; text-align:center;">${seg.name}</td>`;
-            i = renderEnd - 1;
-          } else bookingRow.innerHTML += `<td></td>`;
-        }
-        rotaTable.appendChild(bookingRow);
-      });
+      for (let cell of emptyCells) {
+        if (!cell) bookingRow.innerHTML += `<td></td>`;
+        else if (cell === "merged") continue;
+        else bookingRow.innerHTML += `<td colspan="${cell.colspan}" class="booking-block" style="background:#90caf9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cell.name}</td>`;
+      }
+      rotaTable.appendChild(bookingRow);
 
       // shifts
-      for (const shift of dayShifts.get(dateKey) || []) {
+      const dayAssignments = assignments.filter(s => s.date === dateKey);
+      for (const shift of dayAssignments) {
         const role = rotaRoles.find(r => r.id === shift.role);
         const user = users.find(u => u.id === shift.uId);
         const staffName = user ? `${user.forename} ${user.surname}` : "";
@@ -141,40 +161,27 @@ export async function loadRota(currentUser) {
         </td>`;
 
         if (shift.start && shift.end) {
-  let [sh, sm] = shift.start.split(":").map(Number);
-  let [eh, em] = shift.end.split(":").map(Number);
+          let [sh, sm] = shift.start.split(":").map(Number);
+          let [eh, em] = shift.end.split(":").map(Number);
+          const startSlot = sh * slotsPerHour + (sm/60)*slotsPerHour;
+          const endSlot = eh * slotsPerHour + (em/60)*slotsPerHour;
+          const renderStart = Math.max(startSlot, blockStartSlot);
+          const renderEnd = Math.min(endSlot, blockEndSlot);
+          const colspan = renderEnd - renderStart;
 
-  let startSlot = sh * slotsPerHour + sm / 15;
-  let endSlot = eh * slotsPerHour + em / 15;
-
-  // Clamp to current visible block
-  const renderStart = Math.max(startSlot, blockStartSlot);
-  const renderEnd = Math.min(endSlot, blockEndSlot);
-
-  // Only render if there’s any overlap
-  if (renderEnd > renderStart) {
-    // Empty cells before the shift within the block
-    shiftRow.innerHTML += `<td></td>`.repeat(renderStart - blockStartSlot);
-
-    // Render the shift block
-    shiftRow.innerHTML += `<td colspan="${renderEnd - renderStart}" class="shift-block" style="background:#c5e1a5;text-align:center;">${staffName}</td>`;
-
-    // Empty cells after the shift within the block
-    shiftRow.innerHTML += `<td></td>`.repeat(blockEndSlot - renderEnd);
-  } else {
-    // No overlap with this block, just empty cells
-    shiftRow.innerHTML += `<td></td>`.repeat(blockEndSlot - blockStartSlot);
-  }
-} else {
-  // No start/end defined, just empty cells
-  shiftRow.innerHTML += `<td></td>`.repeat(blockEndSlot - blockStartSlot);
-}
-
-
+          if (colspan > 0) {
+            shiftRow.innerHTML += `<td></td>`.repeat(Math.floor(renderStart - blockStartSlot));
+            shiftRow.innerHTML += `<td colspan="${Math.ceil(colspan)}" class="shift-block" style="background:#c5e1a5;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${staffName}</td>`;
+            shiftRow.innerHTML += `<td></td>`.repeat(Math.floor(blockEndSlot - renderEnd));
+          } else {
+            shiftRow.innerHTML += `<td></td>`.repeat(blockEndSlot - blockStartSlot);
+          }
+        } else {
+          shiftRow.innerHTML += `<td></td>`.repeat(blockEndSlot - blockStartSlot);
+        }
 
         rotaTable.appendChild(shiftRow);
 
-        // --- button handlers ---
         shiftRow.querySelector(".unassign-btn").onclick = async () => {
           await update("rotaAssignments", { uId: null, start: null, end: null }, { column: "id", operator: "eq", value: shift.id });
           await renderWeek();
@@ -202,7 +209,7 @@ export async function loadRota(currentUser) {
         };
       }
 
-      // ghost row (+Add Shift) click
+      // ghost row: +Add Shift
       const ghostRow = document.createElement("tr");
       ghostRow.innerHTML = `<td class="ghost-row" colspan="${hoursVisible * slotsPerHour + 1}">+ Add Shift</td>`;
       rotaTable.appendChild(ghostRow);
@@ -236,9 +243,8 @@ export async function loadRota(currentUser) {
 
   renderWeek();
 
-  // controls
   document.getElementById("prevBlock").onclick = () => { if (currentBlockStart>0){ currentBlockStart-=hoursVisible; renderWeek(); } };
   document.getElementById("nextBlock").onclick = () => { if (currentBlockStart+hoursVisible<24){ currentBlockStart+=hoursVisible; renderWeek(); } };
   document.getElementById("prevWeek").onclick = () => { weekStart.setDate(weekStart.getDate()-7); currentBlockStart=Math.floor(new Date().getHours()/hoursVisible)*hoursVisible; renderWeek(); };
-  document.getElementById("nextWeek").onclick = () => { weekStart.setDate(weekStart.getDate()+7); currentBlockStart=Math.floor(new Date().getHours()/hoursVisible)*hoursVisible; renderWeek(); };
+  document.getElementById("nextWeek").onclick = () => { weekStart.setDate(weekStart.getDate()+7); currentBlockStart=Math.floor(new Date().getHours()/hoursVisible)*currentBlockStart; renderWeek(); };
 }
