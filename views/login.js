@@ -5,7 +5,8 @@ import { sendEmail } from "../js/email.js";
 
 export default function renderLogin() {
   return `
-    <form id="login-form" novalidate>
+  <div class="backgroundGrad">
+    <form id="login-form" class="login-form" novalidate>
       <h1>Login</h1>
       <label for="email">Email</label>
       <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com" />
@@ -14,6 +15,7 @@ export default function renderLogin() {
       <input type="submit" class="primaryButton" value="Login" />
     </form>
     <p id="message" aria-live="polite" style="color: red; margin-top: 10px;"></p>
+    </div>
   `;
 }
 
