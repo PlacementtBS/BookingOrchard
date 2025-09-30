@@ -252,7 +252,7 @@ export function renderPublicLayout(content) {
     <main class="content">${content}
     <footer>
       <p>BOOKING ORCHARD LTD is a UK company registered in England and Wales</p>
-      <p>Registration Number</p>
+      <p>Company Registration Number 16751616</p>
       <p>Copyright of BOOKING ORCHARD LTD 2025</p>
     </footer>
     </main>
