@@ -615,3 +615,26 @@ footer{
     font-weight: lighter;
     bottom: 0;
 }
+.login-form{
+    width: 30vw;
+    height: fit-content;
+    padding: 20px;
+    margin: auto;
+    background-color: #fff;
+    border-radius: 10px;
+}
+.backgroundGrad {
+    background: linear-gradient(
+        270deg,
+        rgba(170, 74, 156, 0.295),
+        rgba(44, 110, 54, 0.219),
+        rgba(170, 74, 156, 0.295)
+    );
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    height: 100%;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
