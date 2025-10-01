@@ -638,3 +638,257 @@ footer{
     justify-content: center;
     flex-direction: column;
 }
+.rota-body {
+  display: flex;
+}
+
+/* --- SIDEBAR --- */
+.role-sidebar-wrapper {
+  position: fixed;
+  top: 60px; /* below header */
+  right: 20px;
+  width: 220px;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+
+.role-sidebar {
+  background: #f7f7f7;
+  border: 1px solid #ccc;
+  padding: 10px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 4px;
+}
+
+/* collapsed state */
+.role-sidebar-wrapper.role-sidebar-collapsed {
+  transform: translateX(110%); /* slides offscreen to the right */
+}
+
+/* toggle button */
+.toggle-button {
+  position: fixed;
+  top: 70px; /* aligns with sidebar top */
+  right: 250px; /* sits just to the left of sidebar */
+  padding: 6px 10px;
+  cursor: pointer;
+  background: #f7f7f7;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  z-index: 1001;
+}
+
+.role-item {
+  cursor: grab;
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.role-actions {
+  margin-top: 10px;
+}
+
+.role-actions input {
+  width: 140px;
+  margin-right: 4px;
+}
+
+/* --- ROTA GRID --- */
+.rota-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.rota-grid {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.rota-grid th,
+.rota-grid td {
+  border: 1px solid #ccc;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cell-inner {
+  position: relative;
+  height: 24px;
+}
+
+.booking-block {
+  font-size: 10px;
+  color: #000;
+  overflow: hidden;
+  position: absolute;
+  padding-left: 2px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.shift-image {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-sizing: border-box;
+  cursor: pointer;
+  overflow: hidden;
+  position: absolute;
+  z-index: 10;
+}
+
+.shift-image img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.shift-block-line {
+  width: 3px;
+  position: absolute;
+  border-radius: 0;
+}
+
+.hover-card {
+  transform: translateX(-200px);
+  position: absolute;
+  background: #fff;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  z-index: 1000;
+}
+
+.hidden {
+  display: none;
+}
+
+/* --- MODAL --- */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  width: 250px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.primaryButton,
+.secondaryButton {
+  padding: 4px 6px;
+  margin: 2px;
+}
+
+.role-item,
+.uns-item {
+  padding: 4px;
+  margin: 2px;
+  cursor: pointer;
+}
+
+/* --- CONTEXT MENU --- */
+.context-menu {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  z-index: 1000;
+  padding: 4px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-menu button {
+  float: left;
+  display: block;
+  width: fit-content;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: #eee;
+}
+
+/* --- STICKY HEADERS --- */
+.rota-grid th {
+  position: sticky;
+  top: 0;
+  background: #fff; /* header color */
+  z-index: 10;
+  border-bottom: 2px solid #ccc; /* optional */
+}
+
+.rota-grid th:first-child,
+.rota-grid td:first-child {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 9;
+}
+/* condensed rota table: narrow time column and a single day column */
+.condensed-rota th.time-col {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: right;
+  padding-right: 8px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.condensed-rota td {
+  padding-left: 6px;
+  position: relative;
+}
+
+/* Ensure booking / shift blocks keep same look */
+.condensed-rota .cell-inner { height: 24px; }
+.clock-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-bottom: 1px solid #ddd;
+}
+.clock-row.in { background: #e6ffe6; }
+.clock-row.out { background: #f9f9f9; }
+.clock-row button {
+  margin-left: 10px;
+  padding: 2px 6px;
+  font-size: 12px;
+}

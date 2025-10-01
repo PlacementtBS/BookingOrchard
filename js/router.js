@@ -26,6 +26,7 @@ import myRotaPage, { loadMyRota } from '../views/myRota.js';
 import { select, insert } from './db.js';
 import clockPage, { loadClock } from '../views/myclock.js';
 import managerClockPage, { loadManagerClock } from '../views/managerClockPage.js';
+import dashboardPage, { loadDashboard } from '../views/dashboard.js';
 
 let currentUser = null;
 
@@ -74,7 +75,11 @@ const publicRoutes = {
 };
 
 const privateRoutes = {
-  '/dashboard': () => `<h2>Welcome to your dashboard, ${currentUser?.forename || ''}</h2>`,
+  '/dashboard': () => {
+    const html = dashboardPage();
+    setTimeout(() => loadDashboard(currentUser), 0);
+    return html;
+  },
   '/forms': () => { window.location.hash = "#/forms/list"; },
   '/forms/list': async () => {
     const html = formsPage(currentUser);
@@ -84,7 +89,7 @@ const privateRoutes = {
   '/documents': async () => {
     const html = documentsPage(currentUser);
     setTimeout(() => loadDocuments(currentUser), 0);
-    return `${documentsSubNav}${html}`;
+    return `${html}`;
   },
   '/my-clock': async () => {
     const html = clockPage(currentUser);

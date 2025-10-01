@@ -55,7 +55,7 @@ export default async function customFormHTML() {
 
   // --- Timing inputs for single/recurring patterns ---
   let timingFields = "";
-  if (!booking.recurring || booking.recurrence?.basis === "SingleDates") {
+  if (!booking.recurrence || booking.recurrence?.basis === "SingleDates") {
     timingFields = booking.recurrence?.dates.map(date => `
       <div class="dateRow">
         <label>${new Date(date).toLocaleDateString()}</label>
@@ -77,9 +77,9 @@ export default async function customFormHTML() {
     timingFields = `
       <div class="monthRow">
         <label>${booking.recurrence.week} ${booking.recurrence.day}</label>
-        <input type="time" name="start_month" required />
+        <input type="time" name="start_monthly" required />
         <span>to</span>
-        <input type="time" name="end_month" required />
+        <input type="time" name="end_monthly" required />
       </div>
     `;
   }
@@ -145,7 +145,7 @@ export async function requirementsFormAfterRender() {
     // --- Timings ---
     let timings = {};
 
-    if (!booking.recurring || booking.recurrence?.basis === "SingleDates") {
+    if (!booking.recurrence || booking.recurrence?.basis === "SingleDates") {
       booking.recurrence?.dates.forEach(date => {
         const start = form.querySelector(`input[name="start_${date}"]`)?.value;
         const end = form.querySelector(`input[name="end_${date}"]`)?.value;
@@ -171,22 +171,21 @@ export async function requirementsFormAfterRender() {
         current.setDate(current.getDate() + 1);
       }
     } else if (booking.recurrence.basis === "Monthly") {
+      const patternStart = form.querySelector(`input[name="start_monthly"]`)?.value;
+      const patternEnd = form.querySelector(`input[name="end_monthly"]`)?.value;
+
       const start = new Date(booking.startDate);
       const end = new Date(booking.endDate);
-      const patternStart = form.querySelector(`input[name="start_month"]`)?.value;
-      const patternEnd = form.querySelector(`input[name="end_month"]`)?.value;
-
-      const day = booking.recurrence.day;
-      const week = booking.recurrence.week;
-
       const current = new Date(start);
+
       while (current <= end) {
         const d = new Date(current);
         const nth = Math.ceil(d.getDate() / 7);
         const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
         const dayName = ["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()];
 
-        if (dayName === day && (week === "last" ? d.getDate() > last.getDate() - 7 : nth == week)) {
+        if (dayName === booking.recurrence.day &&
+            (booking.recurrence.week === "last" ? d.getDate() > last.getDate() - 7 : nth == booking.recurrence.week)) {
           timings[d.toISOString().split("T")[0]] = { start: patternStart, end: patternEnd };
         }
         current.setDate(current.getDate() + 1);

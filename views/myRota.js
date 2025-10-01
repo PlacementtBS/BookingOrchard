@@ -39,31 +39,60 @@ export async function loadMyRota(currentUser) {
   };
 
   // --- fetch data ---
-  const assignments = await select("rotaAssignments", "*", { column: "uId", operator: "eq", value: currentUser.id });
+  const assignments = await select("rotaAssignments", "*", {
+    column: "uId",
+    operator: "eq",
+    value: currentUser.id
+  });
   if (!assignments.length) {
     rotaWrapper.innerHTML = `<p style="text-align:center;">No upcoming shifts</p>`;
     return;
   }
 
-  const bookings = await select("bookings", "*", { column: "oId", operator: "eq", value: currentUser.organisationId });
-  const rotaRoles = await select("rotaRoles", "*", { column: "oId", operator: "eq", value: currentUser.organisationId });
+  const bookings = await select("bookings", "*", {
+    column: "oId",
+    operator: "eq",
+    value: currentUser.organisationId
+  });
+  const rotaRoles = await select("rotaRoles", "*", {
+    column: "oId",
+    operator: "eq",
+    value: currentUser.organisationId
+  });
 
   // --- filter, enrich & group by date ---
   const shifts = assignments
-    .filter(shift => shift.date >= todayKey) // exclude past
-    .map(shift => {
-      const role = rotaRoles.find(r => r.id === shift.role);
+    .filter((shift) => shift.date >= todayKey) // exclude past
+    .map((shift) => {
+      const role = rotaRoles.find((r) => r.id === shift.role);
       const roleName = role ? role.roleName : "Unknown Role";
 
-      let bookingName = "";
+      let overlappingBookings = [];
       if (shift.date && shift.start && shift.end) {
-        const sameDayBookings = bookings.filter(b => b.timings && b.timings[shift.date]);
+        // bookings active on this date
+        const sameDayBookings = bookings.filter(
+          (b) =>
+            shift.date >= b.startDate &&
+            shift.date <= b.endDate &&
+            b.timings
+        );
+
         for (const b of sameDayBookings) {
-          const t = b.timings[shift.date];
+          let timings;
+          try {
+            timings =
+              typeof b.timings === "string"
+                ? JSON.parse(b.timings)
+                : b.timings;
+          } catch {
+            timings = {};
+          }
+
+          const t = timings[shift.date];
           if (t?.start && t?.end) {
+            // overlap check: !(shiftEnd <= bookingStart || shiftStart >= bookingEnd)
             if (!(shift.end <= t.start || shift.start >= t.end)) {
-              bookingName = b.name;
-              break;
+              overlappingBookings.push(b.name);
             }
           }
         }
@@ -71,9 +100,12 @@ export async function loadMyRota(currentUser) {
 
       return {
         date: shift.date,
-        booking: bookingName || "-",
+        bookings: overlappingBookings.length
+          ? overlappingBookings.join(", ")
+          : "-",
         role: roleName,
-        times: shift.start && shift.end ? `${shift.start} - ${shift.end}` : "TBC"
+        times:
+          shift.start && shift.end ? `${shift.start} - ${shift.end}` : "TBC"
       };
     });
 
@@ -103,7 +135,7 @@ export async function loadMyRota(currentUser) {
     rotaWrapper.appendChild(heading);
 
     // shifts
-    dayShifts.forEach(shift => {
+    dayShifts.forEach((shift) => {
       const card = document.createElement("div");
       card.className = "rota-card";
       card.style = `
@@ -116,7 +148,7 @@ export async function loadMyRota(currentUser) {
       `;
       card.innerHTML = `
         <div><strong>Role:</strong> ${shift.role}</div>
-        <div><strong>Booking:</strong> ${shift.booking}</div>
+        <div><strong>Bookings:</strong> ${shift.bookings}</div>
         <div><strong>Times:</strong> ${shift.times}</div>
       `;
       rotaWrapper.appendChild(card);

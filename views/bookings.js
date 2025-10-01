@@ -1,6 +1,7 @@
 import { select, insert } from "../js/db.js";
 
 // --- Custom popup for new bookings ---
+// --- Custom popup for new bookings ---
 function showNewBookingPopup(currentUser) {
   const overlay = document.createElement("div");
   overlay.className = "popupOverlay";
@@ -27,12 +28,14 @@ function showNewBookingPopup(currentUser) {
             <option value="Monthly">Monthly</option>
           </select>
         </label>
+
         <div id="weeklyFields" style="display:none;">
           <p>Select days:</p>
           ${["Mo","Tu","We","Th","Fr","Sa","Su"].map(
             d => `<label><input type="checkbox" value="${d}" /> ${d}</label>`
           ).join(" ")}
         </div>
+
         <div id="monthlyFields" style="display:none;">
           <label>
             Week
@@ -53,6 +56,15 @@ function showNewBookingPopup(currentUser) {
             </select>
           </label>
         </div>
+
+        <label>
+          Start Date
+          <input type="date" id="recurringStart" name="recurringStart" required />
+        </label>
+        <label>
+          End Date
+          <input type="date" id="recurringEnd" name="recurringEnd" required />
+        </label>
       </div>
 
       <div id="dateFields">
@@ -78,21 +90,29 @@ function showNewBookingPopup(currentUser) {
   const datesContainer = popup.querySelector("#datesContainer");
 
   // --- Helpers ---
-  // --- Helpers ---
   function addDateInput(required = false) {
     const wrapper = document.createElement("div");
     wrapper.className = "dateRow";
 
     const input = document.createElement("input");
     input.type = "date";
-    input.required = required; // only true for the first one
+    recurringChk.addEventListener("change", () => {
+  const isRecurring = recurringChk.checked;
+  recurrenceFields.style.display = isRecurring ? "block" : "none";
+  document.getElementById("dateFields").style.display = isRecurring ? "none" : "block";
+
+  // Fix required attribute on hidden fields
+  datesContainer.querySelectorAll("input[type=date]").forEach(input => {
+    input.required = !isRecurring; 
+  });
+});
+
     input.className = "dateInput";
 
     input.addEventListener("change", () => {
-      // Only add a ghost input if the last one has a value
       const lastInput = datesContainer.querySelector(".dateRow:last-child input");
       if (lastInput && lastInput.value && !lastInput.nextSibling) {
-        addDateInput(false); // ghost input, not required
+        addDateInput(false);
       }
     });
 
@@ -100,9 +120,8 @@ function showNewBookingPopup(currentUser) {
     datesContainer.appendChild(wrapper);
   }
 
-  // first one required
+  // first one required for single dates
   addDateInput(true);
-
 
   recurringChk.addEventListener("change", () => {
     recurrenceFields.style.display = recurringChk.checked ? "block" : "none";
@@ -142,8 +161,20 @@ function showNewBookingPopup(currentUser) {
       endDate = dates[dates.length - 1];
       recurrence = { basis: "SingleDates", dates };
     } else {
+      startDate = form.recurringStart.value;
+      endDate = form.recurringEnd.value;
+
+      if (!startDate || !endDate) {
+        alert("Please select a start and end date for recurring bookings");
+        return;
+      }
+
       if (basisSelect.value === "Weekly") {
         const days = Array.from(weeklyFields.querySelectorAll("input:checked")).map(i => i.value);
+        if (!days.length) {
+          alert("Please select at least one day for weekly recurrence");
+          return;
+        }
         recurrence = { basis: "Weekly", days };
       }
       if (basisSelect.value === "Monthly") {
@@ -153,14 +184,12 @@ function showNewBookingPopup(currentUser) {
           day: document.getElementById("monthDay").value 
         };
       }
-      startDate = prompt("Enter recurrence start date (yyyy-mm-dd):");
-      endDate = prompt("Enter recurrence end date (yyyy-mm-dd):");
     }
 
     await insert("bookings", {
       id: crypto.randomUUID(),
       name,
-      recurring,
+      recurring, // ✅ always true for recurring
       recurrence,
       startDate,
       endDate,
@@ -173,6 +202,7 @@ function showNewBookingPopup(currentUser) {
     location.reload();
   });
 }
+
 
 // --- Main Page ---
 export default function bookingsPage() {

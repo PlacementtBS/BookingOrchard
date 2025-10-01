@@ -341,23 +341,44 @@ export async function bookingAfterRender(currentUser) {
   const timingsTable = document.getElementById("timingsTable");
   timingsTable.innerHTML = "";
   let timingsData = {};
-  try { timingsData = typeof booking.timings === "string" ? JSON.parse(booking.timings) : booking.timings || {}; } catch { timingsData={}; }
+  try { 
+    timingsData = typeof booking.timings === "string" ? JSON.parse(booking.timings) : booking.timings || {}; 
+  } catch { timingsData={}; }
 
   if (booking.recurrence) {
     let rec = typeof booking.recurrence === "string" ? JSON.parse(booking.recurrence) : booking.recurrence;
-    if (rec.basis === "Weekly" && rec.days?.length) {
+    if (rec.recurring) { // only if recurring
       const start = new Date(booking.startDate);
       const end = new Date(booking.endDate);
-      const dayMap = { Mo:1, Tu:2, We:3, Th:4, Fr:5, Sa:6, Su:0 };
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
-        const dayAbbr = Object.keys(dayMap).find(k=>dayMap[k]===d.getDay());
-        if (rec.days.includes(dayAbbr)) {
-          const dateStr = d.toISOString().split("T")[0];
-          if (!timingsData[dateStr]) timingsData[dateStr] = { start: "09:00", end: "17:00" };
+      const now = new Date();
+      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+      const clampStart = start < firstDayThisMonth ? firstDayThisMonth : start;
+      const clampEnd = end > lastDayNextMonth ? lastDayNextMonth : end;
+
+      if (rec.basis === "Weekly" && rec.days?.length) {
+        const dayMap = { Mo:1, Tu:2, We:3, Th:4, Fr:5, Sa:6, Su:0 };
+        for (let d = new Date(clampStart); d <= clampEnd; d.setDate(d.getDate() + 1)) {
+          const dayAbbr = Object.keys(dayMap).find(k => dayMap[k] === d.getDay());
+          if (rec.days.includes(dayAbbr)) {
+            const dateStr = d.toISOString().split("T")[0];
+            if (!timingsData[dateStr]) timingsData[dateStr] = { start: "09:00", end: "17:00" };
+          }
         }
       }
     }
   }
+
+  // Filter timingsData to only include this month and next month
+  const now = new Date();
+  const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  timingsData = Object.fromEntries(
+    Object.entries(timingsData).filter(([date]) => {
+      const d = new Date(date);
+      return d >= firstDayThisMonth && d <= lastDayNextMonth;
+    })
+  );
 
   if (Object.keys(timingsData).length === 0) timingsTable.innerHTML = "<tr><td>No timings set</td></tr>";
   else {
@@ -372,71 +393,55 @@ export async function bookingAfterRender(currentUser) {
   document.getElementById("editTimingsBtn").addEventListener("click", () => {
     showUpdatePopup({ tableName:"bookings", id:booking.id, columns:["timings"], friendlyNames:["Timings"]});
   });
+
   // --- Staff Scheduled During This Event ---
-const bookingRotaEl = document.getElementById("bookingRota");
-bookingRotaEl.innerHTML = "Loading...";
+  const bookingRotaEl = document.getElementById("bookingRota");
+  bookingRotaEl.innerHTML = "Loading...";
 
-(async () => {
-  // Get all users for this organisation
-  const users = await select("users", "*", { column: "organisationId", operator: "eq", value: currentUser.organisationId });
+  (async () => {
+    const users = await select("users", "*", { column: "organisationId", operator: "eq", value: currentUser.organisationId });
+    const assignmentsRaw = await select("rotaAssignments", "*", { column: "oId", operator: "eq", value: currentUser.organisationId });
 
-  // Get all rotaAssignments for this organisation
-  const assignmentsRaw = await select("rotaAssignments", "*", {
-    column: "oId",
-    operator: "eq",
-    value: currentUser.organisationId
-  });
+    const bookingDates = Object.keys(timingsData).sort((a, b) => new Date(a) - new Date(b));
+    let rotaHTML = "";
 
-  const bookingDates = Object.keys(timingsData).sort((a, b) => new Date(a) - new Date(b));
+    for (const date of bookingDates) {
+      const t = timingsData[date];
+      if (!t?.start || !t?.end) continue;
 
-  let rotaHTML = "";
+      const [bStartH, bStartM] = t.start.split(":").map(Number);
+      const [bEndH, bEndM] = t.end.split(":").map(Number);
+      const bookingStart = bStartH * 60 + bStartM;
+      const bookingEnd = bEndH * 60 + bEndM;
 
-  for (const date of bookingDates) {
-    const t = timingsData[date];
-    if (!t?.start || !t?.end) continue;
+      const shiftsForDate = assignmentsRaw
+        .filter(a => a.date === date)
+        .filter(shift => {
+          if (!shift.start || !shift.end) return false;
+          const [sH, sM] = shift.start.split(":").map(Number);
+          const [eH, eM] = shift.end.split(":").map(Number);
+          const shiftStart = sH * 60 + sM;
+          const shiftEnd = eH * 60 + eM;
+          return shiftEnd > bookingStart && shiftStart < bookingEnd;
+        })
+        .map(shift => {
+          const user = users.find(u => u.id === shift.uId);
+          if (!user) return null;
+          return { name: `${user.forename} ${user.surname}`, role: shift.role || "-", start: shift.start, end: shift.end };
+        })
+        .filter(Boolean);
 
-    const [bStartH, bStartM] = t.start.split(":").map(Number);
-    const [bEndH, bEndM] = t.end.split(":").map(Number);
-    const bookingStart = bStartH * 60 + bStartM;
-    const bookingEnd = bEndH * 60 + bEndM;
-
-    const shiftsForDate = assignmentsRaw
-      .filter(a => a.date === date)
-      .filter(shift => {
-        if (!shift.start || !shift.end) return false;
-        const [sH, sM] = shift.start.split(":").map(Number);
-        const [eH, eM] = shift.end.split(":").map(Number);
-        const shiftStart = sH * 60 + sM;
-        const shiftEnd = eH * 60 + eM;
-        return shiftEnd > bookingStart && shiftStart < bookingEnd; // overlap
-      })
-      .map(shift => {
-        const user = users.find(u => u.id === shift.uId);
-        if (!user) return null;
-        return {
-          name: `${user.forename} ${user.surname}`,
-          role: shift.role || "-",
-          start: shift.start,
-          end: shift.end
-        };
-      })
-      .filter(Boolean);
-
-    rotaHTML += `<h4>${new Date(date).toLocaleDateString("en-GB")}</h4>`;
-
-    if (shiftsForDate.length === 0) {
-      rotaHTML += `<p>No staff scheduled for this date.</p>`;
-    } else {
-      rotaHTML += `<ul>`;
-      for (const s of shiftsForDate) {
-        rotaHTML += `<li>${s.name} (${s.role}) – ${s.start} to ${s.end}</li>`;
+      rotaHTML += `<h4>${new Date(date).toLocaleDateString("en-GB")}</h4>`;
+      if (shiftsForDate.length === 0) rotaHTML += `<p>No staff scheduled for this date.</p>`;
+      else {
+        rotaHTML += `<ul>`;
+        for (const s of shiftsForDate) rotaHTML += `<li>${s.name} (${s.role}) – ${s.start} to ${s.end}</li>`;
+        rotaHTML += `</ul>`;
       }
-      rotaHTML += `</ul>`;
     }
-  }
 
-  bookingRotaEl.innerHTML = rotaHTML || "No staff scheduled for this booking.";
-})();
+    bookingRotaEl.innerHTML = rotaHTML || "No staff scheduled for this booking.";
+  })();
 
   // --- Form Responses ---
   const formResponsesEl = document.getElementById("formResponses");
@@ -475,23 +480,12 @@ bookingRotaEl.innerHTML = "Loading...";
         return `
           <div class="responseField">
             <label><strong>${question}</strong></label>
-            <p>${value ?? "No response"}</p>
+            <p>${value}</p>
           </div>
         `;
-      });
+      }).join("");
 
-      formResponsesEl.innerHTML = `
-        <div class="formResponseCard">
-          <h3>Form: ${formName}</h3>
-          <div class="responseFields">
-            ${fields.join("")}
-          </div>
-        </div>
-      `;
-    } else {
-      formResponsesEl.textContent = "No form responses yet.";
-    }
-  } else {
-    formResponsesEl.textContent = "No form responses yet.";
-  }
+      formResponsesEl.innerHTML = `<h3>Form Responses</h3>${fields}`;
+    } else formResponsesEl.innerHTML = "<p>No responses recorded</p>";
+  } else formResponsesEl.innerHTML = "<p>No responses recorded</p>";
 }
