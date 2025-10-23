@@ -3,6 +3,7 @@
 // Supabase REST info
 const SUPABASE_URL = 'https://jkvthdkqqckhipdlnpuk.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprdnRoZGtxcWNraGlwZGxucHVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MTU2NTQsImV4cCI6MjA2NzQ5MTY1NH0.jQHWBy-jKpocqiRcgb3caYicjJPa-3tCpWkVdK7Y3Wg';
+
 const HEADERS = {
   'apikey': SUPABASE_KEY,
   'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -22,10 +23,16 @@ async function supabaseFetch(table, query = {}) {
   return res.json();
 }
 
-// format ICS date
+// format ICS date with timezone reference
 function fmtICSDate(dateStr, timeStr = '09:00') {
   const d = new Date(`${dateStr}T${timeStr}`);
-  return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  // return as YYYYMMDDTHHMMSS
+  return d.toISOString().replace(/[-:]/g, '').split('.')[0];
+}
+
+// CRLF helper for ICS compliance
+function crlf(str) {
+  return str.replace(/\n/g, '\r\n');
 }
 
 export async function onRequestGet(context) {
@@ -58,38 +65,62 @@ export async function onRequestGet(context) {
 
   const published = assignments.filter(a => a.published);
 
+  // Build ICS events
   const events = published.map(a => {
-    const start = fmtICSDate(a.date, a.start || '09:00');
-    const end = fmtICSDate(a.date, a.end || '17:00');
+    const uid = `${a.id}-${userId}@bookingorchard.com`;
+    const dtstamp = fmtICSDate(new Date().toISOString());
+    const dtstart = fmtICSDate(a.date, a.start);
+    const dtend = fmtICSDate(a.date, a.end);
     const summary = a.role || 'Shift';
-    const desc = `Shift: ${summary}\nStart: ${a.start || 'TBC'}\nEnd: ${a.end || 'TBC'}`;
+    const description = `Shift: ${summary}\nStart: ${a.start}\nEnd: ${a.end}`;
+
     return `
 BEGIN:VEVENT
-UID:${a.id}@rota.yourdomain.com
-DTSTAMP:${fmtICSDate(new Date().toISOString())}
-DTSTART:${start}
-DTEND:${end}
+UID:${uid}
+DTSTAMP:${dtstamp}Z
+DTSTART;TZID=Europe/London:${dtstart}
+DTEND;TZID=Europe/London:${dtend}
 SUMMARY:${summary}
-DESCRIPTION:${desc}
+DESCRIPTION:${description}
 END:VEVENT
 `;
-  });
+  }).join('');
 
+  // Full ICS calendar with timezone info
   const ics = `
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//YourApp//Rota Calendar//EN
+PRODID:-//BookingOrchard//Rota Calendar//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
 X-WR-CALNAME:${user.forename || 'My'} Rota
 X-WR-TIMEZONE:Europe/London
-${events.join('')}
+BEGIN:VTIMEZONE
+TZID:Europe/London
+X-LIC-LOCATION:Europe/London
+BEGIN:STANDARD
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0000
+DTSTART:19701025T020000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+TZNAME:GMT
+END:STANDARD
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0000
+TZOFFSETTO:+0100
+DTSTART:19700329T010000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+TZNAME:BST
+END:DAYLIGHT
+END:VTIMEZONE
+${events}
 END:VCALENDAR
 `;
 
-  return new Response(ics.trim(), {
+  return new Response(crlf(ics.trim()), {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'inline; filename="rota.ics"',
-      'Cache-Control': 'public, max-age=3600'
+      'Content-Disposition': 'inline; filename="rota.ics"'
     }
   });
 }
