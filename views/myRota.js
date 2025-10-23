@@ -242,19 +242,17 @@ export async function loadMyRota(currentUser) {
       rotaWrapper.appendChild(card);
     }
   }
-  const btn = document.createElement("button");
-  btn.textContent = "Subscribe to My Calendar";
-  btn.className = "primaryButton";
-  btn.style = "margin-bottom:20px;";
-
-  // link to the ICS function
   const calendarUrl = `${location.origin}/api/rota.ics?user=${currentUser.id}&token=${currentUser.calendarToken}`;
 
-  btn.onclick = () => {
-    // optional: open in new tab so calendar apps can subscribe
-    window.open(calendarUrl, "_blank");
-    alert("Your calendar subscription link has been opened. Use this link to subscribe in your calendar app:\n\n" + calendarUrl);
-  };
+// Replace http/https with webcal
+const subscribeUrl = calendarUrl.replace(/^https?:\/\//, "webcal://");
+
+const btn = document.createElement("a");
+btn.textContent = "Subscribe to My Calendar";
+btn.href = subscribeUrl;
+btn.className = "primaryButton";
+btn.style = "margin-bottom:20px;";
+btn.target = "_blank"; // optional: opens in new tab
 
   rotaWrapper.append(btn);
 }
