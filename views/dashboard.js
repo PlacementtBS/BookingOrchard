@@ -5,7 +5,7 @@ export default function dashboardPage() {
     <section>
       <div>Next Booking</div>
       <div class="third">
-        <h2>Live Rota</h2>
+        <h2>Rota</h2>
         <div id="todaysRota" class="rota-wrapper" style="max-height:400px; overflow-y:auto;">
           <table id="todaysRotaTable" class="rota-grid condensed-rota"></table>
         </div>
@@ -41,238 +41,83 @@ export async function loadDashboard(currentUser) {
   }, 30000);
 }
 
-/* ------------------ CONDENSED ROTA ------------------ */
 async function renderCondensedRota(currentUser) {
   const rotaTable = document.getElementById("todaysRotaTable");
-  const hoverCard = document.getElementById("hoverCard");
   if (!rotaTable) return;
 
-  const slotsPerHour = 2;
-  const totalSlots = 24 * slotsPerHour;
+  rotaTable.innerHTML = ""; // clear previous content
 
-  const now = new Date();
-  const startWindow = new Date(now);
-  startWindow.setHours(now.getHours() - 3, 0, 0, 0);
-  const endWindow = new Date(now);
-  endWindow.setHours(now.getHours() + 3, 0, 0, 0);
-
+  const today = new Date();
   const ymd = d =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
       d.getDate()
     ).padStart(2, "0")}`;
+  const todayKey = ymd(today);
 
-  const parseTimeToSlot = t =>
-    t
-      ? t.split(":").map(Number).reduce(
-          (a, v, i) =>
-            i === 0
-              ? a + v * slotsPerHour
-              : a + Math.floor(v / (60 / slotsPerHour)),
-          0
-        )
-      : null;
-
-  const slotToTime = s => {
-    const h = Math.floor(s / slotsPerHour);
-    const m = (s % slotsPerHour) * (60 / slotsPerHour);
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  };
-
-  const dateKeys = [];
-  const tmp = new Date(startWindow);
-  tmp.setHours(0, 0, 0, 0);
-  while (tmp <= endWindow) {
-    dateKeys.push(ymd(tmp));
-    tmp.setDate(tmp.getDate() + 1);
-  }
-
-  const [roles, bookings, users] = await Promise.all([
-    select("rotaRoles", "*", { column: "oId", operator: "eq", value: currentUser.organisationId }),
-    select("bookings", "*", { column: "oId", operator: "eq", value: currentUser.organisationId }),
-    select("users", "*", { column: "organisationId", operator: "eq", value: currentUser.organisationId })
+  // Fetch relevant data
+  const [assignments, users, rotaRoles] = await Promise.all([
+    select("rotaAssignments", "*", {
+      column: "date",
+      operator: "eq",
+      value: todayKey
+    }),
+    select("users", "*", {
+      column: "organisationId",
+      operator: "eq",
+      value: currentUser.organisationId
+    }),
+    select("rotaRoles", "*", {
+      column: "oId",
+      operator: "eq",
+      value: currentUser.organisationId
+    })
   ]);
 
-  const assignmentPromises = dateKeys.map(dk =>
-    select("rotaAssignments", "*", { column: "date", operator: "eq", value: dk })
-  );
-  const assignmentsArrays = await Promise.all(assignmentPromises);
-  const assignments = assignmentsArrays.flat().filter(Boolean);
-
-  const roleColors = {};
-  (roles || []).forEach((r, i) => (roleColors[r.id] = `hsl(${(i * 60) % 360},70%,60%)`));
-
-  const bookingMap = new Map();
-  let bookingColors = {};
-  let colorIndex = 0;
-  const palette = ["#f48fb1", "#ffcc80", "#81d4fa", "#b39ddb", "#a5d6a7"];
-  for (const b of bookings || []) {
-    if (!bookingColors[b.id]) bookingColors[b.id] = palette[colorIndex++ % palette.length];
-    let timings = {};
-    try {
-      timings = typeof b.timings === "string" ? JSON.parse(b.timings) : b.timings || {};
-    } catch {}
-    for (const dk of Object.keys(timings)) {
-      const t = timings[dk];
-      const s = parseTimeToSlot(t.start);
-      const e = parseTimeToSlot(t.end);
-      if (s != null && e != null) {
-        if (!bookingMap.has(dk)) bookingMap.set(dk, []);
-        bookingMap.get(dk).push({
-          ...t,
-          id: b.id,
-          name: b.name,
-          startSlot: s,
-          endSlot: e,
-          color: bookingColors[b.id]
-        });
-      }
-    }
+  if (!assignments.length) {
+    rotaTable.innerHTML = `<tr><td colspan="4" style="text-align:center;">No published shifts today</td></tr>`;
+    return;
   }
 
-  const asgMap = new Map();
-  (assignments || []).forEach(a => {
-    if (!a.start) return;
-    const s = parseTimeToSlot(a.start);
-    const e = a.end ? parseTimeToSlot(a.end) : s + 4 * slotsPerHour;
-    if (s == null || e == null) return;
-    if (!asgMap.has(a.date)) asgMap.set(a.date, []);
-    asgMap.get(a.date).push({ ...a, startSlot: s, endSlot: e });
+  // Flatten roles JSON to a map
+  const roleMap = {};
+  rotaRoles.forEach(r => {
+    try {
+      const parsedRoles = typeof r.roles === "string" ? JSON.parse(r.roles) : r.roles;
+      parsedRoles.forEach(role => {
+        roleMap[role.id] = role.role;
+      });
+    } catch (e) {
+      console.error("Failed to parse roles", e);
+    }
   });
 
-  function assignColumns(items) {
-    const cols = [];
-    (items || [])
-      .sort((a, b) => a.startSlot - b.startSlot)
-      .forEach(it => {
-        let col = 0;
-        while (
-          cols[col] &&
-          cols[col].some(o => o.startSlot < it.endSlot && o.endSlot > it.startSlot)
-        )
-          col++;
-        if (!cols[col]) cols[col] = [];
-        cols[col].push(it);
-        it.column = col;
-      });
-    return cols.length;
-  }
+  // Table header
+  const headerRow = document.createElement("tr");
+  ["Person", "Start", "End", "Role"].forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    headerRow.appendChild(th);
+  });
+  rotaTable.appendChild(headerRow);
 
-  rotaTable.innerHTML = "";
+  // Render each published shift
+  assignments
+    .filter(a => a.published)
+    .sort((a, b) => a.start.localeCompare(b.start))
+    .forEach(a => {
+      const user = users.find(u => u.id === a.uId);
+      const userName = user ? `${user.forename} ${user.surname}` : "Unassigned";
+      const roleName = roleMap[a.role] || "Unknown";
 
-  for (const dk of dateKeys) {
-    const dateRow = document.createElement("tr");
-    dateRow.innerHTML = `<th colspan="2" style="background:#f0f0f0;text-align:left;padding:6px 8px;">${new Date(
-      dk
-    ).toDateString()}</th>`;
-    rotaTable.appendChild(dateRow);
-
-    const isStartDate = dk === ymd(startWindow);
-    const isEndDate = dk === ymd(endWindow);
-    const dayStartSlot = isStartDate
-      ? parseTimeToSlot(`${String(startWindow.getHours()).padStart(2, "0")}:00`)
-      : 0;
-    const dayEndSlot = isEndDate
-      ? parseTimeToSlot(`${String(endWindow.getHours()).padStart(2, "0")}:00`)
-      : totalSlots;
-
-    const shiftsThisDay = asgMap.get(dk) || [];
-    const bookingThisDay = bookingMap.get(dk) || [];
-    const shiftColsCount = assignColumns(shiftsThisDay);
-    assignColumns(bookingThisDay);
-
-    for (let slot = dayStartSlot; slot < dayEndSlot; slot++) {
       const tr = document.createElement("tr");
-      const th = document.createElement("th");
-      th.className = "time-col";
-      th.textContent = slotToTime(slot);
-      tr.appendChild(th);
-
-      const td = document.createElement("td");
-      const innerDiv = document.createElement("div");
-      innerDiv.className = "cell-inner";
-      td.appendChild(innerDiv);
-
-      const bookingsThisSlot = (bookingThisDay || []).filter(
-        b => b.startSlot <= slot && b.endSlot > slot
-      );
-      if (bookingsThisSlot?.length) {
-        bookingsThisSlot.forEach(b => {
-          const div = document.createElement("div");
-          div.className = "booking-block";
-          div.style.background = b.color;
-          div.style.position = "absolute";
-          div.style.top = "0";
-          div.style.height = "100%";
-          div.style.left = `${(shiftColsCount || 0) * 30 + (b.column || 0) * 16}px`;
-          div.style.right = "0";
-          div.style.zIndex = 1;
-          if (b.startSlot === slot) div.textContent = b.name;
-          innerDiv.appendChild(div);
-        });
-      }
-
-      const shiftsThisSlot = (shiftsThisDay || []).filter(
-        s => s.startSlot <= slot && s.endSlot > slot
-      );
-      if (shiftsThisSlot?.length) {
-        shiftsThisSlot.forEach(s => {
-          const roleColor = roleColors[s.role] || "#666";
-          const lineLeft = (s.column || 0) * 30;
-
-          const line = document.createElement("div");
-          line.className = "shift-block-line";
-          line.style.left = `${lineLeft}px`;
-          line.style.top = "0";
-          line.style.height = "100%";
-          line.style.borderLeft = `3px solid ${roleColor}`;
-          line.style.position = "absolute";
-          line.style.zIndex = 5;
-          innerDiv.appendChild(line);
-
-          if (s.startSlot === slot) {
-            const user = (users || []).find(u => u.id === s.uId);
-            const initials = user
-              ? `${user.forename?.[0] || "?"}${user.surname?.[0] || "?"}`
-              : "??";
-            const imgDiv = document.createElement("div");
-            imgDiv.className = "shift-image";
-            imgDiv.dataset.uid = s.uId || "";
-            imgDiv.dataset.name = user
-              ? `${user.forename} ${user.surname}`
-              : "Unassigned";
-            imgDiv.dataset.role =
-              (roles || []).find(r => r.id === s.role)?.roleName || "Unknown";
-            imgDiv.style.border = `2px solid ${roleColor}`;
-            imgDiv.style.left = `${lineLeft - 1}px`;
-
-            const img = new Image();
-            img.src = `https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/profileImages/${s.uId}`;
-            img.onerror = () => {
-              imgDiv.textContent = initials;
-              imgDiv.style.background = roleColor;
-            };
-            img.style.borderRadius = "50%";
-            imgDiv.appendChild(img);
-
-            imgDiv.onmouseenter = e => {
-              hoverCard.innerHTML = `<strong>${imgDiv.dataset.name}</strong><br>${imgDiv.dataset.role}<br>${slotToTime(
-                s.startSlot
-              )} - ${slotToTime(s.endSlot)}`;
-              hoverCard.style.top = e.pageY + "px";
-              hoverCard.style.left = e.pageX + "px";
-              hoverCard.classList.remove("hidden");
-            };
-            imgDiv.onmouseleave = () => hoverCard.classList.add("hidden");
-
-            innerDiv.appendChild(imgDiv);
-          }
-        });
-      }
-
-      tr.appendChild(td);
+      tr.innerHTML = `
+        <td>${userName}</td>
+        <td>${a.start || "TBC"}</td>
+        <td>${a.end || "TBC"}</td>
+        <td>${roleName}</td>
+      `;
       rotaTable.appendChild(tr);
-    }
-  }
+    });
 }
 
 /* ------------------ STAFF CLOCK ------------------ */

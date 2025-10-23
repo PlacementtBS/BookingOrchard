@@ -2,7 +2,7 @@ import { select, insert } from "./db.js";
 import { sendEmail } from "./email.js";
 
 export async function completeStage(bookingId, stageId, meta = {}) {
-  if (!bookingId || !stageId) throw new Error("Booking ID and stage ID required");
+  if (!bookingId && stageId !== 0) throw new Error("Booking ID and stage ID required");
 
   // 1️⃣ Load booking
   const booking = (await select("bookings", "*", { column: "id", operator: "eq", value: bookingId }))[0];
@@ -11,17 +11,28 @@ export async function completeStage(bookingId, stageId, meta = {}) {
   // 2️⃣ Load workflow stages for the organisation
   let workflow = await select("bookingWorkflows", "*", { column: "oId", operator: "eq", value: booking.oId }) || [];
   workflow.sort((a, b) => (a.stageNumber || 0) - (b.stageNumber || 0));
+  if (!workflow.length) return;
 
-  const currentIndex = workflow.findIndex(w => w.id === stageId);
-  if (currentIndex < 0) return;
-  const currentStage = workflow[currentIndex];
+  // Resolve currentIndex
+  let currentIndex;
+  let currentStage;
 
-  // 3️⃣ Mark current stage as completed
-  await insert("bookingWorkflowCompletion", {
-    bookingId,
-    stageId: currentStage.id,
-    completedAt: new Date().toISOString()
-  });
+  if (stageId === 0) {
+    // Treat as if first step was just completed
+    currentIndex = 0;
+    currentStage = workflow[0];
+  } else {
+    currentIndex = workflow.findIndex(w => w.id === stageId);
+    if (currentIndex < 0) return;
+    currentStage = workflow[currentIndex];
+
+    // Mark explicitly completed stage
+    await insert("bookingWorkflowCompletion", {
+      bookingId,
+      stageId: currentStage.id,
+      completedAt: new Date().toISOString()
+    });
+  }
 
   // 📨 Figure out client email
   const clients = await select("clients", "*") || [];
@@ -29,27 +40,9 @@ export async function completeStage(bookingId, stageId, meta = {}) {
   const clientEmail = client?.email || meta.email || "client@example.com";
   const origin = location.origin;
 
-  // 4️⃣ Special case: If first stage is "Booking Requirements", send right away
-  if (currentIndex === 0 && currentStage.actionType === "Booking Requirements") {
-    await sendEmail({
-      to: clientEmail,
-      subject: "Booking Requirements Form – Action Required",
-      message: `<p>Dear ${client?.forename || ""},</p>
-                <p>Please complete your booking requirements form:</p>
-                <p><a href="${origin}/#/requirements-form?bid=${booking.id}" target="_blank">Open Form</a></p>
-                <p>Thank you.</p>`,
-      forename: client?.forename || "",
-      surname: client?.surname || ""
-    });
-  }
-
-  // 5️⃣ Get next stage
-  const nextStage = workflow[currentIndex + 1];
-  if (!nextStage) return; // no next stage
-
-  try {
-    switch (nextStage.actionType) {
-
+  // Helper: run a stage
+  async function runStage(stage) {
+    switch (stage.actionType) {
       case "Booking Requirements":
         await sendEmail({
           to: clientEmail,
@@ -63,13 +56,13 @@ export async function completeStage(bookingId, stageId, meta = {}) {
         });
         break;
 
-      case "Custom Form":
+      case "Custom Form": {
         let schema = {};
-        try { schema = nextStage.actionSchema ? JSON.parse(nextStage.actionSchema) : {}; }
+        try { schema = stage.actionSchema ? JSON.parse(stage.actionSchema) : {}; }
         catch { schema = {}; }
 
-        const formId = schema.options[0].value || "";
-        const recipient = schema.options[1].value || "Client";
+        const formId = schema.options?.[0]?.value || "";
+        const recipient = schema.options?.[1]?.value || "Client";
 
         if (recipient === "Client") {
           await sendEmail({
@@ -93,16 +86,17 @@ export async function completeStage(bookingId, stageId, meta = {}) {
           }
         }
         break;
+      }
 
       case "Schedule Staff":
       case "Quote":
       case "Invoice":
-        // Nothing to do
-        break;
+        // Nothing automatic to do
+        return "manual";
 
-      case "Booking Agreement":
+      case "Booking Agreement": {
         let agreementSchema = {};
-        try { agreementSchema = nextStage.actionSchema ? JSON.parse(nextStage.actionSchema) : {}; }
+        try { agreementSchema = stage.actionSchema ? JSON.parse(stage.actionSchema) : {}; }
         catch { agreementSchema = {}; }
 
         const docOption = agreementSchema.options?.find(o => o.label === "Document");
@@ -121,10 +115,11 @@ export async function completeStage(bookingId, stageId, meta = {}) {
           }
         }
         break;
+      }
 
-      case "Send Email":
+      case "Send Email": {
         let emailSchema = {};
-        try { emailSchema = nextStage.actionSchema ? JSON.parse(nextStage.actionSchema) : {}; }
+        try { emailSchema = stage.actionSchema ? JSON.parse(stage.actionSchema) : {}; }
         catch { emailSchema = {}; }
 
         const recipientType = emailSchema.recipient || "Client";
@@ -145,14 +140,8 @@ export async function completeStage(bookingId, stageId, meta = {}) {
             message: emailSchema.message || "<p>Please review the update.</p>"
           });
         }
-
-        // ✅ Mark Send Email stage completed automatically
-        await insert("bookingWorkflowCompletion", {
-          bookingId,
-          stageId: nextStage.id,
-          completedAt: new Date().toISOString()
-        });
         break;
+      }
 
       case "Event Confirmation":
         const bookingInfo = `
@@ -165,22 +154,30 @@ export async function completeStage(bookingId, stageId, meta = {}) {
           subject: "Event Confirmation",
           message: `<p>Dear ${client?.forename || ""},</p>${bookingInfo}<p>Thank you.</p>`
         });
-
-        // ✅ Mark Event Confirmation stage completed automatically
-        await insert("bookingWorkflowCompletion", {
-          bookingId,
-          stageId: nextStage.id,
-          completedAt: new Date().toISOString()
-        });
         break;
 
       default:
-        console.warn("Unknown stage type:", nextStage.actionType);
+        console.warn("Unknown stage type:", stage.actionType);
+        return "manual";
     }
 
-    console.log(`Stage complete → initialized next stage '${nextStage.actionType}' for booking ${bookingId}`);
+    // ✅ Auto-complete this stage
+    await insert("bookingWorkflowCompletion", {
+      bookingId,
+      stageId: stage.id,
+      completedAt: new Date().toISOString()
+    });
 
-  } catch (err) {
-    console.error("Error initializing next stage:", err);
+    return "auto";
   }
+
+  // 3️⃣ Progress through stages
+  let nextIndex = currentIndex + 1;
+  while (nextIndex < workflow.length) {
+    const result = await runStage(workflow[nextIndex]);
+    if (result === "manual") break; // stop at first manual stage
+    nextIndex++;
+  }
+
+  console.log(`Stage complete → progressed to index ${nextIndex} for booking ${bookingId}`);
 }
