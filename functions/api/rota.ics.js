@@ -1,6 +1,7 @@
 // /functions/api/rota.ics.js
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/module/supabase.mjs";
 
+
 // Supabase client
 const supabaseUrl = 'https://jkvthdkqqckhipdlnpuk.supabase.co';
 const supabaseKey =
