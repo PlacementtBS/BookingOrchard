@@ -59,13 +59,13 @@ export async function onRequestGet(context) {
   const published = assignments.filter(a => a.published);
 
   const events = published.map(a => {
-    const start = fmtICSDate(a.date, a.start);
-    const end = fmtICSDate(a.date, a.end);
+    const start = fmtICSDate(a.date, a.start || '09:00');
+    const end = fmtICSDate(a.date, a.end || '17:00');
     const summary = a.role || 'Shift';
-    const desc = `Shift: ${summary}\nStart: ${a.start}\nEnd: ${a.end}`;
+    const desc = `Shift: ${summary}\nStart: ${a.start || 'TBC'}\nEnd: ${a.end || 'TBC'}`;
     return `
 BEGIN:VEVENT
-UID:${a.id}@yourdomain.com
+UID:${a.id}@rota.yourdomain.com
 DTSTAMP:${fmtICSDate(new Date().toISOString())}
 DTSTART:${start}
 DTEND:${end}
@@ -88,7 +88,8 @@ END:VCALENDAR
   return new Response(ics.trim(), {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'inline; filename="rota.ics"'
+      'Content-Disposition': 'inline; filename="rota.ics"',
+      'Cache-Control': 'public, max-age=3600'
     }
   });
 }
