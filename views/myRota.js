@@ -242,17 +242,26 @@ export async function loadMyRota(currentUser) {
       rotaWrapper.appendChild(card);
     }
   }
-  const calendarUrl = `${location.origin}/api/rota.ics?user=${currentUser.id}&token=${currentUser.calendarToken}`;
+ const userId = currentUser.id;
+const token = currentUser.calendarToken;
+const httpsUrl = `${location.origin}/api/rota.ics?user=${userId}&token=${token}`;
+const webcalUrl = httpsUrl.replace(/^https:/, 'webcal:');
 
-// Replace http/https with webcal
-const subscribeUrl = calendarUrl.replace(/^https?:\/\//, "webcal://");
-
-const btn = document.createElement("a");
-btn.textContent = "Subscribe to My Calendar";
-btn.href = subscribeUrl;
+// create button
+const btn = document.createElement("button");
+btn.textContent = "Subscribe to My Rota";
 btn.className = "primaryButton";
 btn.style = "margin-bottom:20px;";
-btn.target = "_blank"; // optional: opens in new tab
+btn.onclick = () => {
+  // try opening webcal://
+  const opened = window.open(webcalUrl);
+  if (!opened) {
+    // fallback: copy https link
+    navigator.clipboard.writeText(httpsUrl).then(() => {
+      alert("Could not open webcal:// automatically.\nCopied link to clipboard:\n\n" + httpsUrl);
+    });
+  }
+};
 
   rotaWrapper.append(btn);
 }
