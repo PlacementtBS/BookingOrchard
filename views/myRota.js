@@ -57,6 +57,7 @@ function showPopup(html, title = "Info") {
 
 export async function loadMyRota(currentUser) {
   const rotaWrapper = document.getElementById("myRotaWrapper");
+  
   rotaWrapper.innerHTML = "";
 
   const today = new Date();
@@ -241,17 +242,18 @@ export async function loadMyRota(currentUser) {
       rotaWrapper.appendChild(card);
     }
   }
-
-  // ✅ Add the "Subscribe to My Calendar" button
-  const calendarUrl = `${location.origin}/api/rota.ics?user=${currentUser.id}&token=${currentUser.calendarToken}`;
-
   const btn = document.createElement("button");
   btn.textContent = "Subscribe to My Calendar";
   btn.className = "primaryButton";
   btn.style = "margin-bottom:20px;";
+
+  // link to the ICS function
+  const calendarUrl = `${location.origin}/api/rota.ics?user=${currentUser.id}&token=${currentUser.calendarToken}`;
+
   btn.onclick = () => {
-    navigator.clipboard.writeText(calendarUrl);
-    alert("Copied subscription link to clipboard:\n\n" + calendarUrl);
+    // optional: open in new tab so calendar apps can subscribe
+    window.open(calendarUrl, "_blank");
+    alert("Your calendar subscription link has been opened. Use this link to subscribe in your calendar app:\n\n" + calendarUrl);
   };
 
   rotaWrapper.append(btn);
