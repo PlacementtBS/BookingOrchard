@@ -30,27 +30,67 @@ import dashboardPage, { loadDashboard } from '../views/dashboard.js';
 
 let currentUser = null;
 
+// ===== PERMISSION TEMPLATES =====
+const PRODUCTS = {
+  "Basic": [
+    "Bookings Tab",
+    "Manage and Create Forms",
+    "Manage and Create Documents",
+    "Calendar of Bookings",
+    "Manage Rota",
+    "Personal Rota",
+    "Manage Timeclock",
+    "Personal Timeclock",
+    "Manage Organisation"
+  ]
+};
 
+function hasPermission(user, product, action) {
+  if (!user?.permissionJSON) return false;
+  try {
+    const perms = JSON.parse(user.permissionJSON);
+    return perms[product]?.includes(action);
+  } catch (err) {
+    console.error("Failed to parse permissionJSON", err);
+    return false;
+  }
+}
 
+// ===== SUBNAVS WITH PERMISSIONS =====
+function buildSubnav(items) {
+  return subnav(
+    items.filter(item => {
+      // If no permission required, always show
+      if (!item.perm) return true;
+      return hasPermission(currentUser, item.perm.product, item.perm.action);
+    })
+  );
+}
 
-// ===== SUBNAVS =====
-const formsSubNav = subnav([
-  { link: '#/forms/list', label: 'Forms' },
-  { link: '#/forms/create', label: 'Create' }
-]);
+// Forms subnav
+const formsSubNav = () =>
+  buildSubnav([
+    { link: '#/forms/list', label: 'Forms', perm: { product: "Basic", action: "Manage and Create Forms" } },
+    { link: '#/forms/create', label: 'Create', perm: { product: "Basic", action: "Manage and Create Forms" } },
+  ]);
 
-const settingsSubNav = subnav([
-  { link: '#/settings/profile', label: 'Profile' },
-  { link: '#/settings/userManagement', label: 'Users' },
-  { link: '#/settings/bookableSpaces', label: 'Spaces' },
-  { link: '#/settings/bookableEquipment', label: 'Equipment' },
-  { link: '#/settings/orgSettings', label: 'Organisation' },
-]);
+// Settings subnav
+const settingsSubNav = () =>
+  buildSubnav([
+    { link: '#/settings/profile', label: 'Profile' },
+    { link: '#/settings/userManagement', label: 'Users', perm: { product: "Basic", action: "Manage Organisation" } },
+    { link: '#/settings/bookableSpaces', label: 'Spaces', perm: { product: "Basic", action: "Manage Organisation" } },
+    { link: '#/settings/bookableEquipment', label: 'Equipment', perm: { product: "Basic", action: "Manage Organisation" } },
+    { link: '#/settings/orgSettings', label: 'Organisation', perm: { product: "Basic", action: "Manage Organisation" } },
+  ]);
 
-const documentsSubNav = subnav([
-  { link: '#/documents', label: 'Documents' },
-  { link: '#/document-builder', label: 'New Document' }
-]);
+// Documents subnav
+const documentsSubNav = () =>
+  buildSubnav([
+    { link: '#/documents', label: 'Documents', perm: { product: "Basic", action: "Manage and Create Documents" } },
+    { link: '#/document-builder', label: 'New Document', perm: { product: "Basic", action: "Manage and Create Documents" } },
+  ]);
+
 
 // ===== ROUTES =====
 const publicRoutes = {
@@ -67,7 +107,7 @@ const publicRoutes = {
     setTimeout(() => requirementsFormAfterRender(), 0);
     return html;
   },
-    '/agreements': async () => {
+  '/agreements': async () => {
     const html = await documentViewerHTML();
     setTimeout(() => documentViewerAfterRender(), 0);
     return html;
@@ -84,7 +124,7 @@ const privateRoutes = {
   '/forms/list': async () => {
     const html = formsPage(currentUser);
     setTimeout(() => loadForms(currentUser), 0);
-    return `${formsSubNav}${html}`;
+    return `${formsSubNav()}${html}`;
   },
   '/documents': async () => {
     const html = documentsPage(currentUser);
@@ -94,12 +134,12 @@ const privateRoutes = {
   '/my-clock': async () => {
     const html = clockPage(currentUser);
     setTimeout(() => loadClock(currentUser), 0);
-    return `${documentsSubNav}${html}`;
+    return `${html}`;
   },
   '/document-builder': async () => {
     const html = await documentBuilderHTML();
     setTimeout(() => documentBuilderAfterRender(currentUser), 0);
-    return `${documentsSubNav}${html}`;
+    return `${documentsSubNav()}${html}`;
   },
   '/document': async () => {
     const html = await documentViewerHTML();
@@ -109,7 +149,7 @@ const privateRoutes = {
   '/forms/create': async () => {
     const html = formBuilderPage();
     setTimeout(() => loadFormBuilderPage(currentUser), 0);
-    return `${formsSubNav}${html}`;
+    return `${formsSubNav()}${html}`;
   },
   '/bookings': async () => {
     const html = bookingsPage(currentUser);
@@ -135,22 +175,22 @@ const privateRoutes = {
   '/settings/profile': async () => {
     const html = settingsPage(currentUser);
     setTimeout(() => loadSettings(currentUser), 0);
-    return `${settingsSubNav}${html}`;
+    return `${settingsSubNav()}${html}`;
   },
   '/settings/bookableSpaces': async () => {
     const html = bookableSpacesHTML();
     setTimeout(() => bookableSpacesAfterRender(currentUser), 0);
-    return `${settingsSubNav}${html}`;
+    return `${settingsSubNav()}${html}`;
   },
   '/settings/bookableEquipment': async () => {
     const html = bookableEquipmentHTML();
     setTimeout(() => bookableEquipmentAfterRender(currentUser), 0);
-    return `${settingsSubNav}${html}`;
+    return `${settingsSubNav()}${html}`;
   },
   '/settings/userManagement': async () => {
     const html = usersPageHtml();
     setTimeout(() => loadUsersPage(currentUser), 0);
-    return `${settingsSubNav}${html}`;
+    return `${settingsSubNav()}${html}`;
   },
   '/invoice-and-quote': async () => {
     const html = invoicePage();
@@ -158,21 +198,21 @@ const privateRoutes = {
     return html;
   },
   '/manager-clock': async () => {
-  const users = await select("users", "*", {column:"organisationId", operator:"eq", value:currentUser.organisationId}) || [];
-  const html = managerClockPage(users);
-  setTimeout(() => loadManagerClock(users, currentUser.organisationId), 0);
-  return html;
-},
+    const users = await select("users", "*", {column:"organisationId", operator:"eq", value:currentUser.organisationId}) || [];
+    const html = managerClockPage(users);
+    setTimeout(() => loadManagerClock(users, currentUser.organisationId), 0);
+    return html;
+  },
   '/my-rota': async () => {
     const html = myRotaPage();
     setTimeout(() => loadMyRota(currentUser), 0);
     return html;
   },
-  '/settings/orgSettings': async () => `${settingsSubNav}${orgSettings()}`,
+  '/settings/orgSettings': async () => `${settingsSubNav()}${orgSettings()}`,
   '/settings/bookingWorkflow': async () => {
     const html = bookingWorflowHTML();
     setTimeout(() => loadBookingWorkflow(currentUser), 0);
-    return `${settingsSubNav}${html}`;
+    return `${settingsSubNav()}${html}`;
   }
 };
 
@@ -265,33 +305,44 @@ export function renderPublicLayout(content) {
 }
 
 export function renderPrivateLayout(content) {
-  
+  const navItems = [
+    { href: "#/dashboard", label: "Dashboard" },
+    { href: "#/bookings", label: "Bookings", perm: { product: "Basic", action: "Bookings Tab" } },
+    { href: "#/forms", label: "Forms", perm: { product: "Basic", action: "Manage and Create Forms" } },
+    { href: "#/documents", label: "Documents", perm: { product: "Basic", action: "Manage and Create Documents" } },
+    { href: "#/calendar", label: "Calendar", perm: { product: "Basic", action: "Calendar of Bookings" } },
+    { href: "#/rota", label: "Rota", perm: { product: "Basic", action: "Manage Rota" } },
+    { href: "#/my-rota", label: "My Rota", perm: { product: "Basic", action: "Personal Rota" } },
+    { href: "#/my-clock", label: "My Clock", perm: { product: "Basic", action: "Personal Timeclock" } },
+    { href: "#/manager-clock", label: "Manager Clock", perm: { product: "Basic", action: "Manage Timeclock" } },
+  ];
+
+  const linksHtml = navItems
+    .filter(item => !item.perm || hasPermission(currentUser, item.perm.product, item.perm.action))
+    .map(item => `<a href="${item.href}" class="nav-link">${item.label}</a>`).join("");
+
   const html = `
     <nav class="private-nav">
       <div class="user-card">
-        <a  id="user-card" style="display:flex;gap:5px"><img style="width:40px;height:40px;border-radius:500px" src="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/profileImages/${currentUser.id}"></img><div style="width:calc(300px - 60px);overflow:hidden;">${currentUser.forename+" "+currentUser.surname}<br><p>${currentUser.email}</p></div></a>
-        <a  id="btn-logout" style="display:none"><p>Log out</p></a>
-        <a  id="btn-settings" style="display:none" href="#/settings"><p>Settings</p></a>
-        </div>
-      <div class="nav-links">
-        <a href="#/dashboard" class="nav-link">Dashboard</a>
-        <a href="#/bookings" class="nav-link">Bookings</a>
-        <a href="#/forms" class="nav-link">Forms</a>
-        <a href="#/documents" class="nav-link">Documents</a>
-        <a href="#/calendar" class="nav-link">Calendar</a>
-        <a href="#/rota" class="nav-link">Rota</a>
-        <a href="#/my-rota" class="nav-link">My Rota</a>
-        <a href="#/my-clock" class="nav-link">My Clock</a>
-        <a href="#/manager-clock" class="nav-link">Manager Clock</a>
+        <a id="user-card" style="display:flex;gap:5px">
+          <img style="width:40px;height:40px;border-radius:500px" src="https://jkvthdkqqckhipdlnpuk.supabase.co/storage/v1/object/public/profileImages/${currentUser.id}"></img>
+          <div style="width:calc(300px - 60px);overflow:hidden;">
+            ${currentUser.forename + " " + currentUser.surname}<br><p>${currentUser.email}</p>
+          </div>
+        </a>
+        <a id="btn-logout" style="display:none"><p>Log out</p></a>
+        <a id="btn-settings" style="display:none" href="#/settings"><p>Settings</p></a>
       </div>
-      
+      <div class="nav-links">
+        ${linksHtml}
+      </div>
       <button id="clockNavBtn" class="nav-btn">⏱ Clocked Out</button>
-      
     </nav>
     <div class="main">${content}</div>
   `;
   return markActiveLinks(html);
 }
+
 
 export function renderAdminLayout(content) {
   const html = `
@@ -344,6 +395,30 @@ async function router() {
   if (currentUser && (privateRoutes[hashPath] || adminRoutes[hashPath])) {
     setStylesheet('private');
 
+    // ===== PERMISSIONS LOGIC =====
+    const routePermissions = {
+      "/forms": {product: "Basic", action: "Manage and Create Forms"},
+      "/forms/list": {product: "Basic", action: "Manage and Create Forms"},
+      "/documents": {product: "Basic", action: "Manage and Create Documents"},
+      "/my-clock": {product: "Basic", action: "Personal Timeclock"},
+      "/document-builder": {product: "Basic", action: "Manage and Create Documents"},
+      "/bookings": {product: "Basic", action: "Bookings Tab"},
+      "/calendar": {product: "Basic", action: "Calendar of Bookings"},
+      "/rota": {product: "Basic", action: "Manage Rota"},
+      "/my-rota": {product: "Basic", action: "Personal Rota"},
+      "/manager-clock": {product: "Basic", action: "Manage Timeclock"},
+      "/settings/userManagement": {product: "Basic", action: "Manage Organisation"}
+    };
+
+    if (routePermissions[hashPath]) {
+      const {product, action} = routePermissions[hashPath];
+      if (!hasPermission(currentUser, product, action)) {
+        app.innerHTML = `<h2>You do not have permission to view this page</h2>`;
+        return;
+      }
+    }
+
+    // ===== LOAD ROUTE =====
     if (currentUser.product === "admin" && adminRoutes[hashPath]) {
       view = adminRoutes[hashPath];
       content = typeof view === 'function' ? await view() : view;
@@ -352,19 +427,20 @@ async function router() {
       view = privateRoutes[hashPath];
       content = typeof view === 'function' ? await view() : view;
       app.innerHTML = renderPrivateLayout(content);
-      const usrCard = document.getElementById("user-card");
-const btnLogout = document.getElementById("btn-logout");
-const btnSettings = document.getElementById("btn-settings");
 
-usrCard.addEventListener("click", () => {
-  if (btnLogout.style.display === "block") {
-    btnLogout.style.display = "none";
-    btnSettings.style.display = "none";
-  } else {
-    btnLogout.style.display = "block";
-    btnSettings.style.display = "block";
-  }
-});
+      const usrCard = document.getElementById("user-card");
+      const btnLogout = document.getElementById("btn-logout");
+      const btnSettings = document.getElementById("btn-settings");
+
+      usrCard.addEventListener("click", () => {
+        if (btnLogout.style.display === "block") {
+          btnLogout.style.display = "none";
+          btnSettings.style.display = "none";
+        } else {
+          btnLogout.style.display = "block";
+          btnSettings.style.display = "block";
+        }
+      });
     }
 
     // LOGOUT

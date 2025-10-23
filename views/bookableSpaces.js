@@ -68,8 +68,8 @@ export async function bookableSpacesAfterRender(currentUser) {
 
   renderTablePage("spaces", {
     tableLabel: "Bookable Spaces",
-    columns: ["room", "cost", "capacity", "oDep", "oRGroup", "costBillingFrequency"],
-    friendlyNames: ["Name", "Cost", "Capacity", "Department", "Group", "Frequency"],
+    columns: ["room", "rota", "cost", "capacity", "oDep", "oRGroup", "costBillingFrequency"],
+    friendlyNames: ["Name", "Show in Rota", "Cost", "Capacity", "Department", "Group", "Frequency"],
     tableName: "rooms",
     data: spaces,
     idColumn: "id",
@@ -77,6 +77,17 @@ export async function bookableSpacesAfterRender(currentUser) {
       oId: currentUser.organisationId,
     },
     dropdowns: {
+      rota: {
+        // If checkboxes aren't yet supported, this dropdown will appear instead.
+        options: [
+          { value: true, label: "Yes" },
+          { value: false, label: "No" },
+        ],
+        formId: "statusForm",
+        allowCreate: false,
+        // If renderTablePage supports checkbox columns, set this flag:
+        type: "checkbox" // (Optional — used if your table supports checkboxes)
+      },
       costBillingFrequency: {
         options: [
           { value: "Weekly", label: "Weekly" },
@@ -85,7 +96,7 @@ export async function bookableSpacesAfterRender(currentUser) {
           { value: "One Time", label: "One Time" },
         ],
         formId: "statusForm",
-         allowCreate: false,
+        allowCreate: false,
       },
       oDep: {
         options: depDrop,
@@ -129,38 +140,32 @@ export async function bookableSpacesAfterRender(currentUser) {
               oId: currentUser.organisationId,
             },
             onInsert: async () => {
-              const updatedDeps = await select("orgRoomGroups", "*", {
+              const updatedGroups = await select("orgRoomGroups", "*", {
                 column: "oId",
                 operator: "eq",
                 value: currentUser.organisationId,
               });
 
-              const updatedDepDrop = updatedDeps.map(r => ({
+              const updatedGroupDrop = updatedGroups.map(r => ({
                 value: r.id,
                 label: r.groupName,
               }));
 
-              updateDropdownOptions("oRGroup", updatedDepDrop);
-
+              updateDropdownOptions("oRGroup", updatedGroupDrop);
             },
           });
         },
       },
     },
 
-    /**
-     * Here, intercept before insert and update to sanitize the data.
-     * This assumes renderTablePage supports hooks like these.
-     * If not, you may need to modify renderTablePage or handle it separately.
-     */
     beforeInsert: async (row) => {
       return sanitizeRoomData(row, currentUser.organisationId);
     },
     beforeUpdate: async (row) => {
       return sanitizeRoomData(row, currentUser.organisationId);
     },
-
   });
+
 
   renderTablePage("departments", {
     tableLabel: "Departments",

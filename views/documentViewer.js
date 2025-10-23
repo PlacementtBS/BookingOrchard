@@ -4,17 +4,99 @@ import { sendEmail } from "../js/email.js";
 
 export default function documentViewerHTML() {
   return `
-    <section class="fullHeight">
-      <div>
+    <section class="fullHeight doc-viewer">
+      <div class="doc-container">
         <h1 id="documentTitle">Loading...</h1>
-        <hr>
-        <div id="documentContent" style="white-space: pre-wrap;"></div>
-        <div id="docActions" style="margin-top:10px;">
+        <hr class="doc-divider">
+        <div id="documentContent" class="doc-content"></div>
+
+        <div id="docActions" class="doc-actions">
           <button id="reject" class="outlineButton">Reject</button>
           <button id="accept" class="primaryButton">Accept</button>
         </div>
-        <div id="docVerdict" style="margin-top:10px; font-weight:bold;"></div>
+
+        <div id="docVerdict" class="doc-verdict"></div>
       </div>
+
+      <style>
+  /* Reset all padding, margin, and gap inside the viewer */
+ 
+  .doc-viewer {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2rem;
+    height:fit-content;
+  }
+
+  .doc-container {
+    max-width: 900px;
+    width: 100%;
+    padding: 2rem;
+    border-radius: 10px;
+  }
+
+  #documentTitle {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .doc-divider {
+    height: 1px;
+    background: #ddd;
+    border: none;
+    margin-bottom: 1.5rem;
+  }
+
+  .doc-content {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #222;
+
+    margin-bottom: 1.5rem;
+  }
+
+  .doc-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .doc-actions button {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+  }
+
+  .doc-verdict {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+
+  /* Tables and images inside document content */
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #f0f0f0;
+  }
+  .doc-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5rem 0;
+  }
+</style>
+
     </section>
   `;
 }
@@ -87,7 +169,6 @@ export async function documentViewerAfterRender() {
     });
 
     try {
-      // Look up booking + org workflow stage ID
       const booking = (await select("bookings", "*", { column: "id", operator: "eq", value: bId }))[0];
       if (booking) {
         const workflow = await select("bookingWorkflows", "*", { column: "oId", operator: "eq", value: booking.oId });

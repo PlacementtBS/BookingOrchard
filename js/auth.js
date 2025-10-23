@@ -1,5 +1,5 @@
 import { hashPassword } from "./hash.js";
-import { insert, remove, select } from "./db.js";
+import { insert, remove, select, update } from "./db.js";
 
 export function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
@@ -8,6 +8,7 @@ export function hexToBytes(hex) {
   }
   return bytes;
 }
+
 
 function generateToken() {
   // generates a random hex token
@@ -62,11 +63,20 @@ export async function login(email, password) {
     const pwh = await hashPassword(password, saltBytes);
 
     if (pwh.hash === user.passwordHash) {
+      if(user.activated){
       console.log("✅ Login successful");
       await createSession(user.id);
+      if (!user.calendarToken) {
+  const token = crypto.randomUUID();
+  await update("users", { calendarToken: token }, {column:"id",operator:"eq",value:user.id});
+  user.calendarToken = token;
+}
       // Use hash navigation, not page reload
       window.location.hash = '#/dashboard';
       return true;
+      }else {
+      console.warn("Login failed: Account Deactivated");
+      return false;}
     } else {
       console.warn("Login failed: password mismatch");
       return false;
