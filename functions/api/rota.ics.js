@@ -1,5 +1,12 @@
 // /functions/api/rota.ics.js
-import { select } from "../../js/db.js"; // adjust if your db helper is elsewhere
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.0/dist/module/supabase.mjs";
+
+// Supabase client
+const supabaseUrl = 'https://jkvthdkqqckhipdlnpuk.supabase.co';
+const supabaseKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprdnRoZGtxcWNraGlwZGxucHVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MTU2NTQsImV4cCI6MjA2NzQ5MTY1NH0.jQHWBy-jKpocqiRcgb3caYicjJPa-3tCpWkVdK7Y3Wg';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
@@ -10,36 +17,46 @@ export async function onRequestGet(context) {
     return new Response("Missing user or token", { status: 400 });
   }
 
-  // Fetch the user from your database
-  const [user] = await select("users", "*", {
-    column: "id",
-    operator: "eq",
-    value: userId,
-  });
+  // Fetch the user
+  const { data: users, error: userError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", userId)
+    .limit(1);
 
-  if (!user || user.calendarToken !== token) {
+  if (userError || !users || users.length === 0) {
+    return new Response("User not found", { status: 404 });
+  }
+
+  const user = users[0];
+  if (user.calendarToken !== token) {
     return new Response("Invalid token", { status: 403 });
   }
 
-  // Fetch rota assignments
-  const assignments = await select("rotaAssignments", "*", {
-    column: "uId",
-    operator: "eq",
-    value: userId,
-  });
+  // Fetch rota assignments for this user
+  const { data: assignments, error: assignError } = await supabase
+    .from("rotaAssignments")
+    .select("*")
+    .eq("uId", userId);
 
-  const published = assignments.filter((a) => a.published);
+  if (assignError) {
+    return new Response("Failed to fetch assignments", { status: 500 });
+  }
 
+  const published = assignments.filter(a => a.published);
+
+  // Format ICS date
   const fmtICSDate = (dateStr, timeStr = "09:00") => {
     const d = new Date(`${dateStr}T${timeStr}`);
     return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
   };
 
-  const events = published.map((a) => {
+  const events = published.map(a => {
     const start = fmtICSDate(a.date, a.start);
     const end = fmtICSDate(a.date, a.end);
     const summary = a.role || "Shift";
     const desc = `Shift: ${summary}\nStart: ${a.start}\nEnd: ${a.end}`;
+
     return `
 BEGIN:VEVENT
 UID:${a.id}@yourdomain.com
